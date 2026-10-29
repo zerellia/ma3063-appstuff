@@ -11,6 +11,7 @@ import 'advanced.dart';
 import 'advanced2.dart';
 import 'local_screen.dart';
 import 'topology_screen.dart';
+import 'topology_data.dart';
 import 'device_icons.dart';
 import 'labels.dart';
 import 'choice_widgets.dart';
@@ -571,8 +572,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String _loadAvg = '-';
   String _cpuTemp = '-';
   String _connector = 'Checking...';
-  List<Map<String, String>> _ports = [];
-  List<Map<String, String>> _ssids = [];
+  List<Map<String, dynamic>> _ports = [];
   List<Map<String, String>> _radios = [];
   bool _stale = false;
   String _staleTime = '';
@@ -680,20 +680,6 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     } catch (_) {}
     try {
-      final r = await widget.api.get('/api/v1/lua/WiFi/getWifiPlain');
-      final d = dataOf(r);
-      if (d is Map) {
-        final list = listOf(d['ssidList'] ?? d['list']);
-        _ssids = list.whereType<Map>().map((m) {
-          return {
-            'name': str(m['ssidName'], 'Unnamed'),
-            'radio': str(m['relatedRadio']),
-            'on': (m['enable'] == 'yes' || m['enable'] == 'true' || m['enable'] == true) ? 'On' : 'Off',
-          };
-        }).toList();
-      }
-    } catch (_) {}
-    try {
       final r = await widget.api.get('/api/v1/lua/Radio/getRadioList');
       final d = dataOf(r);
       if (d is Map) {
@@ -722,15 +708,10 @@ class _HomeScreenState extends State<HomeScreen> {
         final list = listOf(d['List'] ?? d['list']);
         final rows = list.whereType<Map>().toList();
         rows.sort((a, b) => (numOrNull(a['portId']) ?? 0).compareTo(numOrNull(b['portId']) ?? 0));
-        _ports = rows.map((m) {
-          final pid = (numOrNull(m['portId']) ?? 0).round();
-          final isWan = m['isWan'] == true || m['name'] == 'WAN' || pid == 1;
-          final up = m['status'] == 'on' || m['link'] == 1 || m['link'] == '1';
-          return {
-            'label': isWan ? 'WAN (Port 1)' : 'LAN (Port $pid)',
-            'status': up ? '${str(m['speed'], '1000')} Mbps' : 'Disconnected',
-          };
-        }).toList();
+        _ports = rows
+            .map((m) => portDisplay(Map<String, dynamic>.from(m)))
+            .where((p) => (p['portId'] as int) >= 1 && (p['portId'] as int) <= 4)
+            .toList();
       }
     } catch (_) {}
     try {
@@ -873,7 +854,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            _heroIconButton(Icons.restart_alt_outlined, 'Reboot router', _heroReboot),
+                            _heroIconButton(Icons.power_settings_new_outlined, 'Reboot router', _heroReboot),
                             const SizedBox(width: 8),
                             _heroIconButton(Icons.logout_outlined, 'Log out', _heroLogout),
                           ],
@@ -927,22 +908,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           sectionTitle('CPU trend, sampled while the app is open'),
           RepaintBoundary(child: reyeeCard(child: Sparkline(values: _cpuSamples))),
-          sectionTitle('WiFi networks'),
-          if (_ssids.isEmpty)
-            reyeeCard(child: Text(_loading ? 'Loading...' : 'No WiFi networks returned by the router.'))
-          else
-            for (final s in _ssids)
-              reyeeCard(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                child: Row(
-                  children: [
-                    Icon(s['on'] == 'On' ? Icons.wifi : Icons.wifi_off, color: s['on'] == 'On' ? reyeeBlue : reyeeMuted),
-                    const SizedBox(width: 8),
-                    Expanded(child: Text(s['name'] ?? '-', style: const TextStyle(fontWeight: FontWeight.w600))),
-                    Text(s['on'] ?? '-', style: const TextStyle(color: reyeeMuted)),
-                  ],
-                ),
-              ),
           sectionTitle('Radios'),
           if (_radios.isEmpty)
             reyeeCard(child: Text(_loading ? 'Loading...' : 'No radio data returned.'))
@@ -961,16 +926,37 @@ class _HomeScreenState extends State<HomeScreen> {
           if (_ports.isEmpty)
             reyeeCard(child: Text(_loading ? 'Loading...' : 'No port data returned.'))
           else
-            for (final p in _ports)
-              reyeeCard(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                child: Row(
-                  children: [
-                    Expanded(child: Text(p['label'] ?? '-', style: const TextStyle(fontWeight: FontWeight.w600))),
-                    Text(p['status'] ?? '-', style: const TextStyle(color: reyeeMuted)),
-                  ],
-                ),
+            GlassCard(
+              child: Row(
+                children: [
+                  for (final p in _ports)
+                    Expanded(
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 4),
+                        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 4),
+                        decoration: BoxDecoration(
+                          color: (p['up'] as bool) ? const Color(0xFFE6F4EA) : const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: (p['up'] as bool) ? const Color(0xFF16A34A) : appOutlineVariant),
+                        ),
+                        child: Column(
+                          children: [
+                            Icon(
+                              (p['up'] as bool) ? Icons.bolt : Icons.link_off_outlined,
+                              color: (p['up'] as bool) ? const Color(0xFF137333) : appMuted,
+                              size: 20,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(p['portLabel'] as String, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+                            const SizedBox(height: 4),
+                            Text(p['speedLabel'] as String, textAlign: TextAlign.center, style: const TextStyle(color: appMuted, fontSize: 11)),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
               ),
+            ),
           const SizedBox(height: 8),
           OutlinedButton.icon(onPressed: _load, icon: const Icon(Icons.refresh), label: const Text('Refresh')),
           const SizedBox(height: 8),
@@ -1905,7 +1891,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ('behavior', 'Behavior', 'Parental control rules, max 32', Icons.family_restroom_outlined, BehaviorScreen(api: api, onSessionExpired: onExp)),
       ('radio', 'Radio', 'Channel, bandwidth, power', Icons.signal_cellular_alt_outlined, RadioScreen(api: api, onSessionExpired: onExp)),
       ('mesh', 'Mesh', 'Topology, roaming, EasyMesh', Icons.hub_outlined, MeshScreen(api: api, onSessionExpired: onExp)),
-      ('topology', 'Topology', 'Router, mesh, devices, WiFi standards, ports', Icons.account_tree_outlined, TopologyScreen(api: api, onSessionExpired: onExp)),
+      ('topology', 'Topology', 'Router, devices, WiFi standards, ports', Icons.account_tree_outlined, TopologyScreen(api: api, onSessionExpired: onExp)),
       ('network', 'Network', 'Static DNS, DMZ, UPnP, WPS, WAN', Icons.lan_outlined, NetworkScreen(api: api, onSessionExpired: onExp)),
       ('ipv6', 'IPv6', 'Mode and manual WAN and LAN', Icons.public_outlined, Ipv6Screen(api: api, onSessionExpired: onExp)),
       ('system', 'System', 'Hostname, time, scheduled reboot, session, language, LED schedule, firmware', Icons.tune_outlined, SystemScreen(api: api, onSessionExpired: onExp)),
@@ -2280,7 +2266,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               children: [
                 const Text('The router will be offline for a few minutes. This app will need to log in again.', style: TextStyle(color: reyeeMuted, height: 1.45)),
                 const SizedBox(height: 16),
-                SizedBox(width: double.infinity, child: OutlinedButton(onPressed: _reboot, child: const Text('Restart router'))),
+                SizedBox(width: double.infinity, child: FilledButton.icon(onPressed: _reboot, icon: const Icon(Icons.power_settings_new_outlined), label: const Text('Restart router'))),
               ],
             ),
           ),

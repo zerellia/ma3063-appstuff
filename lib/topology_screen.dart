@@ -7,11 +7,8 @@ import 'device_icons.dart';
 import 'topology_data.dart';
 
 /// Topology, as a separate Settings menu, never on the Home dashboard.
-/// Main router on top, mesh children from MeshGetTopo childList, then
-/// online devices from mainData_GetStaList plus sta_list. The honest
-/// note on screen matters: device lines are a star to the main router,
-/// because this router reports one node and does not report which mesh
-/// node each device is attached to. No per-node attachment is drawn.
+/// Network map only: main router on top, then connected devices from
+/// mainData_GetStaList plus sta_list. No mesh section in this map.
 class TopologyScreen extends StatefulWidget {
   const TopologyScreen({super.key, required this.api, required this.onSessionExpired});
   final RouterApi api;
@@ -24,7 +21,6 @@ class _TopologyScreenState extends State<TopologyScreen> {
   bool _loading = true;
   String? _error;
   String _hostname = 'Main router';
-  List<dynamic> _meshChildren = [];
   List<Map<String, dynamic>> _clients = [];
   List<Map<String, dynamic>> _ports = [];
   Map<String, dynamic> _nicks = {};
@@ -43,11 +39,6 @@ class _TopologyScreenState extends State<TopologyScreen> {
     return str(c['hostName'] ?? c['deviceName'], 'Unknown device');
   }
 
-  String _nodeName(dynamic node) {
-    if (node is Map) return str(node['hostName'] ?? node['hostname'] ?? node['name'] ?? node['mac'], 'Mesh node');
-    return 'Mesh node';
-  }
-
   Future<void> _load() async {
     setState(() {
       _loading = true;
@@ -57,18 +48,6 @@ class _TopologyScreenState extends State<TopologyScreen> {
       final h = await widget.api.get('/api/v1/lua/Hostname/getHostnamePlain');
       final hd = dataOf(h);
       if (hd is Map && hd['hostname'] != null) _hostname = str(hd['hostname']);
-    } catch (_) {}
-    try {
-      final res = await widget.api.get('/api/v1/lua/mesh/MeshGetTopo');
-      final d = dataOf(res);
-      if (d is Map) {
-        final cl = d['childList'];
-        if (cl is List) {
-          _meshChildren = cl;
-        } else if (cl is Map) {
-          _meshChildren = cl.values.toList();
-        }
-      }
     } catch (_) {}
     try {
       final res = await widget.api.get('/api/v1/lua/OnlineUsers/mainData_GetStaList');
@@ -184,7 +163,7 @@ class _TopologyScreenState extends State<TopologyScreen> {
     return Scaffold(
       body: DetailScroll(
         title: 'Topology',
-        subtitle: 'Router, mesh, devices, standards, ports',
+        subtitle: 'Router, devices, standards, ports',
         loading: _loading,
         children: [
           if (_error != null && _error!.isNotEmpty)
@@ -195,31 +174,12 @@ class _TopologyScreenState extends State<TopologyScreen> {
               decoration: BoxDecoration(color: appRedBg, borderRadius: BorderRadius.circular(16)),
               child: Text(_error!, style: const TextStyle(color: appRed)),
             ),
-          const GlassCard(
-            child: Text(
-              'Lines to devices show connections to the main router (star). This router reports one node and does not report which mesh node each device is attached to, so no per-node attachment is drawn here.',
-              style: TextStyle(color: appMuted, height: 1.45),
-            ),
-          ),
           _section('Network map'),
           _nodeTile(icon: Icons.router_outlined, title: _hostname, subtitle: 'Main router · RG-MA3063'),
-          if (_meshChildren.isNotEmpty) ...[
-            _connector(),
-            const Padding(
-              padding: EdgeInsets.fromLTRB(4, 0, 4, 8),
-              child: Text('Mesh nodes', style: TextStyle(fontWeight: FontWeight.w700)),
-            ),
-            for (final child in _meshChildren) ...[
-              _nodeTile(icon: Icons.router_outlined, title: _nodeName(child), subtitle: 'Mesh node'),
-              _connector(),
-            ],
-          ] else
-            const GlassCard(
-              child: Text('No mesh child nodes. This router is the only node.', style: TextStyle(color: appMuted)),
-            ),
+          _connector(),
           const Padding(
             padding: EdgeInsets.fromLTRB(4, 0, 4, 8),
-            child: Text('Devices, connected to the main router', style: TextStyle(fontWeight: FontWeight.w700)),
+            child: Text('Connected devices', style: TextStyle(fontWeight: FontWeight.w700)),
           ),
           if (_clients.isEmpty)
             const GlassCard(child: Text('No online devices found.', style: TextStyle(color: appMuted)))
