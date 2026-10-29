@@ -124,21 +124,13 @@ class _TopologyScreenState extends State<TopologyScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final standardCounts = countByStandard(_clients);
-    final hasStandard = hasStandardField(_clients);
     final bandCounts = countByBand(_clients);
     final total = _clients.length;
-    final standardOrder = ['WiFi 6', 'WiFi 5', 'WiFi 4', 'Unknown'];
-    final standardColors = {
-      'WiFi 6': appBlue,
-      'WiFi 5': const Color(0xFF60A5FA),
-      'WiFi 4': const Color(0xFF94A3B8),
-      'Unknown': appMuted,
-    };
+    final bandOrder = ['5 GHz', '2.4 GHz', 'Unknown band'];
     return Scaffold(
       body: DetailScroll(
         title: 'Topology',
-        subtitle: 'Router, devices, standards, ports',
+        subtitle: 'Router, devices, bands',
         loading: _loading,
         children: [
           if (_error != null && _error!.isNotEmpty)
@@ -180,58 +172,28 @@ class _TopologyScreenState extends State<TopologyScreen> {
                 subtitle: '${str(c['ip'])} · ${str(c['mac'])}',
                 onIconTap: () => _pickIcon(c),
               ),
-          _section('Clients by WiFi standard'),
+          _section('Clients by band'),
           GlassCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    RepaintBoundary(child: _Donut(counts: standardCounts, order: standardOrder, colors: standardColors)),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('$total clients', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, fontFeatures: [FontFeature.tabularFigures()])),
-                          const Text('Total online clients', style: TextStyle(color: appMuted, fontSize: 12)),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+                Text('$total clients', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, fontFeatures: [FontFeature.tabularFigures()])),
+                const Text('Total online clients', style: TextStyle(color: appMuted, fontSize: 12)),
                 const SizedBox(height: 16),
-                for (final label in standardOrder)
-                  if ((standardCounts[label] ?? 0) > 0)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Row(
-                        children: [
-                          Container(width: 10, height: 10, decoration: BoxDecoration(color: standardColors[label], shape: BoxShape.circle)),
-                          const SizedBox(width: 8),
-                          Expanded(child: Text(label, style: const TextStyle(fontWeight: FontWeight.w600))),
-                          Text('${standardCounts[label]}', style: const TextStyle(fontWeight: FontWeight.w700, fontFeatures: [FontFeature.tabularFigures()])),
-                        ],
+                if (bandCounts.isEmpty)
+                  const Text('No band info returned for these clients.', style: TextStyle(color: appMuted))
+                else
+                  for (final label in bandOrder)
+                    if ((bandCounts[label] ?? 0) > 0)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Row(
+                          children: [
+                            Expanded(child: Text(label, style: const TextStyle(fontWeight: FontWeight.w600))),
+                            Text('${bandCounts[label]} clients', style: const TextStyle(fontWeight: FontWeight.w700, fontFeatures: [FontFeature.tabularFigures()])),
+                          ],
+                        ),
                       ),
-                    ),
-                if (!hasStandard)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 8),
-                    child: Text(
-                      'No standard field was returned for these clients, so the standard is Unknown. The band breakdown below comes from SSID or radio text only.',
-                      style: TextStyle(color: appMuted, fontSize: 12, height: 1.45),
-                    ),
-                  ),
-                if (bandCounts.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  const Text('By band', style: TextStyle(fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 8),
-                  for (final e in bandCounts.entries)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: Text('${e.key}: ${e.value} clients', style: const TextStyle(color: appMuted)),
-                    ),
-                ],
               ],
             ),
           ),
@@ -364,56 +326,4 @@ class _StarLinesPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _StarLinesPainter old) => old.router != router || old.targets.length != targets.length;
-}
-
-class _Donut extends StatelessWidget {
-  const _Donut({required this.counts, required this.order, required this.colors});
-  final Map<String, int> counts;
-  final List<String> order;
-  final Map<String, Color> colors;
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 96,
-      height: 96,
-      child: CustomPaint(painter: _DonutPainter(counts: counts, order: order, colors: colors)),
-    );
-  }
-}
-
-class _DonutPainter extends CustomPainter {
-  _DonutPainter({required this.counts, required this.order, required this.colors});
-  final Map<String, int> counts;
-  final List<String> order;
-  final Map<String, Color> colors;
-  @override
-  void paint(Canvas canvas, Size size) {
-    final total = counts.values.fold<int>(0, (a, b) => a + b);
-    final center = Offset(size.width / 2, size.height / 2);
-    final radius = size.width / 2 - 6;
-    if (total == 0) {
-      final paint = Paint()
-        ..color = appOutlineVariant
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 14;
-      canvas.drawCircle(center, radius, paint);
-      return;
-    }
-    var start = -90.0 * 3.141592653589793 / 180.0;
-    for (final label in order) {
-      final count = counts[label] ?? 0;
-      if (count == 0) continue;
-      final sweep = count / total * 2 * 3.141592653589793;
-      final paint = Paint()
-        ..color = colors[label] ?? appMuted
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 14
-        ..strokeCap = StrokeCap.butt;
-      canvas.drawArc(Rect.fromCircle(center: center, radius: radius), start, sweep, false, paint);
-      start += sweep;
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _DonutPainter old) => old.counts != counts;
 }
