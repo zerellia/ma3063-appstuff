@@ -9,7 +9,6 @@ import 'theme.dart';
 import 'local_store.dart';
 import 'advanced.dart';
 import 'advanced2.dart';
-import 'local_screen.dart';
 import 'topology_screen.dart';
 import 'topology_data.dart';
 import 'device_icons.dart';
@@ -770,14 +769,8 @@ class _HomeScreenState extends State<HomeScreen> {
           if (d['load1'] != null) _loadAvg = str(d['load1']);
           if (d['uptime'] != null) _uptime = formatDuration(d['uptime']);
         });
-        final cpuN = numOrNull(d['cpuusage']);
-        final memN = numOrNull(d['memusage']);
-        double? tempN;
-        final tempText = _cpuTemp.replaceAll(' °C', '');
-        tempN = double.tryParse(tempText);
-        await LocalStore.addSample(cpu: cpuN, mem: memN, temp: tempN);
-        if (cpuN != null && cpuN > 85) await LocalStore.addAlert('CPU usage observed at ${cpuN.toStringAsFixed(0)}%, above the 85% local threshold.');
-        if (tempN != null && tempN > 80) await LocalStore.addAlert('CPU temperature observed at ${tempN.toStringAsFixed(1)} C, above the 80 C local threshold.');
+        // No sample or alert recording here anymore: Local insights was
+        // removed, so there is no screen that would ever show those samples.
       }
     } catch (_) {}
   }
@@ -1740,6 +1733,12 @@ class _ToolsScreenState extends State<ToolsScreen> {
     }
   }
 
+  String _diagLabel(String method) {
+    if (method == 'ping') return 'Ping';
+    if (method == 'nslookup') return 'DNS lookup';
+    return 'Traceroute';
+  }
+
   Future<void> _runDiagnose() async {
     final target = _diagTarget.text.trim();
     if (target.isEmpty) {
@@ -1749,7 +1748,7 @@ class _ToolsScreenState extends State<ToolsScreen> {
     setState(() {
       _diagRunning = true;
       _error = null;
-      _diagOutput = 'Running $_diagMethod to $target...';
+      _diagOutput = 'Running ${_diagLabel(_diagMethod)} to $target...';
     });
     try {
       final res = await widget.api.post('/api/v1/lua/Diagnose/diagnose', {
@@ -1758,13 +1757,13 @@ class _ToolsScreenState extends State<ToolsScreen> {
       });
       final d = dataOf(res);
       if (d is Map && d['res'] != null) {
-        setState(() { _diagOutput = d['res'].toString(); _diagSummary = '${_diagMethod == 'ping' ? 'Ping' : 'DNS lookup'} to $target finished. The raw tool output follows.'; });
+        setState(() { _diagOutput = d['res'].toString(); _diagSummary = '${_diagLabel(_diagMethod)} to $target finished. The raw tool output follows.'; });
       } else {
         await Future.delayed(const Duration(milliseconds: 2500));
         if (!mounted) return;
         final out = await widget.api.get('/api/v1/lua/Diagnose/getDiagnoseRes');
         final od = dataOf(out);
-        if (od is Map && od['res'] != null) setState(() { _diagOutput = od['res'].toString(); _diagSummary = '${_diagMethod == 'ping' ? 'Ping' : 'DNS lookup'} to $target finished. The raw tool output follows.'; });
+        if (od is Map && od['res'] != null) setState(() { _diagOutput = od['res'].toString(); _diagSummary = '${_diagLabel(_diagMethod)} to $target finished. The raw tool output follows.'; });
       }
     } on SessionExpiredException {
       widget.onSessionExpired();
@@ -1805,7 +1804,7 @@ class _ToolsScreenState extends State<ToolsScreen> {
             ],
           ),
         ),
-        sectionTitle('Ping and diagnose'),
+        sectionTitle('Diagnose tools'),
         reyeeCard(
           child: Column(
             children: [
@@ -1813,6 +1812,7 @@ class _ToolsScreenState extends State<ToolsScreen> {
                 initialValue: _diagMethod,
                 items: const [
                   DropdownMenuItem(value: 'ping', child: Text('Ping')),
+                  DropdownMenuItem(value: 'traceroute', child: Text('Traceroute')),
                   DropdownMenuItem(value: 'nslookup', child: Text('DNS lookup')),
                 ],
                 onChanged: (v) => setState(() => _diagMethod = v ?? 'ping'),
@@ -1900,7 +1900,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ('system', 'System', 'Hostname, time, scheduled reboot, session, language, LED schedule, firmware', Icons.tune_outlined, SystemScreen(api: api, onSessionExpired: onExp)),
       ('macfilter', 'MAC filter', 'Allow or block devices by MAC address', Icons.filter_alt_outlined, FilterScreen(api: api, onSessionExpired: onExp)),
       ('iptv', 'IPTV and multicast', 'IPTV ports, IGMP, VLAN', Icons.tv_outlined, MediaScreen(api: api, onSessionExpired: onExp)),
-      ('local', 'Local insights', 'Charts, device history, phone speed test, local alerts, weekly report, offline cache', Icons.insights_outlined, LocalScreen(api: api, onSessionExpired: onExp)),
     ];
   }
 

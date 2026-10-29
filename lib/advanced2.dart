@@ -142,6 +142,25 @@ class _NetworkScreenState extends State<NetworkScreen> {
         _wanStatus = '${wanProtoLabel(wan['proto'])} · ${str(wan['ip'], '-')}';
         final proto = str(wan['proto'], '').toLowerCase();
         _wanType = proto.contains('pppoe') ? 'pppoe' : (proto.contains('static') ? 'static' : 'dhcp');
+        if (wan['mtu'] != null) _mtu.text = str(wan['mtu']);
+        // PPPoE credentials are deliberately NOT filled here: wanget
+        // returns "notShow" for username and password, never the real
+        // values, so filling them would put "notShow" into the fields.
+        if (wan['ip'] != null) _wanIp.text = str(wan['ip']);
+        if (wan['mask'] != null) _wanMask.text = str(wan['mask']);
+        if (wan['gateway'] != null) _wanGw.text = str(wan['gateway']);
+        if (wan['dns'] != null) _wanDns.text = wan['dns'] is List ? (wan['dns'] as List).join(' ') : str(wan['dns']);
+      }
+    } catch (_) {}
+    try {
+      final info = await widget.api.get('/api/v1/lua/network/info');
+      final dd = dataOf(info);
+      final wan = dd is Map ? (dd['wan'] is Map ? dd['wan'] as Map : (dd['wan'] is List && (dd['wan'] as List).isNotEmpty ? (dd['wan'] as List).first as Map : null)) : null;
+      if (wan != null) {
+        if (wan['ipaddr'] != null) _wanIp.text = str(wan['ipaddr']);
+        if (wan['netmask'] != null) _wanMask.text = str(wan['netmask']);
+        if (wan['gateway'] != null) _wanGw.text = str(wan['gateway']);
+        if (wan['dns'] != null) _wanDns.text = wan['dns'] is List ? (wan['dns'] as List).join(' ') : str(wan['dns']);
       }
     } catch (_) {}
     if (mounted) setState(() => _loading = false);
@@ -201,6 +220,10 @@ class _NetworkScreenState extends State<NetworkScreen> {
   }
 
   Future<void> _saveWan() async {
+    if (_wanType == 'pppoe' && (_pppoeUser.text.trim().isEmpty || _pppoePass.text.trim().isEmpty)) {
+      advShowMsg(context, 'PPPoE username and password are both required. The router hides the current ones, so retype them before saving, otherwise an empty save would break the PPPoE connection.');
+      return;
+    }
     final form = {
       'proto': _wanType,
       'mtu': _mtu.text.trim(),
@@ -337,26 +360,63 @@ class _NetworkScreenState extends State<NetworkScreen> {
             child: Column(
               children: [
                 Text('Current: $_wanStatus', style: const TextStyle(fontWeight: FontWeight.w700)),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 SegmentedControl<WanType>(
                   options: const [(WanType.dhcp, 'Automatic'), (WanType.pppoe, 'PPPoE'), (WanType.static, 'Static IP')],
                   value: WanType.fromCode(_wanType),
                   onChanged: (v) => setState(() => _wanType = v.code),
                 ),
-                Text(WanType.fromCode(_wanType).description, style: const TextStyle(color: appMuted, fontSize: 12)),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
+                Text(WanType.fromCode(_wanType).description, style: const TextStyle(color: appMuted, fontSize: 12, height: 1.45)),
+                const SizedBox(height: 16),
                 Wrap(
                   spacing: 6,
+                  runSpacing: 8,
                   children: [
                     CustomChoiceChip(label: 'Auto (1500)', selected: _mtu.text == '1500', onTap: () => setState(() => _mtu.text = '1500')),
                     CustomChoiceChip(label: '1492 (PPPoE)', selected: _mtu.text == '1492', onTap: () => setState(() => _mtu.text = '1492')),
                     CustomChoiceChip(label: '1400', selected: _mtu.text == '1400', onTap: () => setState(() => _mtu.text = '1400')),
                   ],
                 ),
-                advField(_mtu, 'MTU (usual default 1500)', keyboardType: TextInputType.number),
+                const SizedBox(height: 16),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('MTU (usual default 1500)', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                      const SizedBox(height: 6),
+                      TextField(controller: _mtu, keyboardType: TextInputType.number, decoration: const InputDecoration(hintText: '1500')),
+                    ],
+                  ),
+                ),
                 if (_wanType == 'pppoe') ...[
-                  advField(_pppoeUser, 'PPPoE username'),
-                  advField(_pppoePass, 'PPPoE password'),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('PPPoE username', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                        const SizedBox(height: 6),
+                        TextField(controller: _pppoeUser, decoration: const InputDecoration(hintText: 'ISP username')),
+                      ],
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('PPPoE password', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                        const SizedBox(height: 6),
+                        TextField(controller: _pppoePass, obscureText: true, decoration: const InputDecoration(hintText: 'ISP password')),
+                      ],
+                    ),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.only(bottom: 16),
+                    child: Text('The router hides the current PPPoE username and password, so they are never shown here. Retype both before saving PPPoE.', style: TextStyle(color: appMuted, fontSize: 12, height: 1.45)),
+                  ),
                 ],
                 if (_wanType == 'static') ...[
                   advField(_wanIp, 'Static IP'),
@@ -647,7 +707,8 @@ class _Ipv6ScreenState extends State<Ipv6Screen> {
                     value: Ipv6Mode.fromCode(_mode),
                     onChanged: (v) => setState(() => _mode = v.code),
                   ),
-                Text(Ipv6Mode.fromCode(_mode).description, style: const TextStyle(color: appMuted, fontSize: 12)),
+                const SizedBox(height: 12),
+                Text(Ipv6Mode.fromCode(_mode).description, style: const TextStyle(color: appMuted, fontSize: 12, height: 1.45)),
                 const SizedBox(height: 16),
                 FilledButton(onPressed: _saveMode, child: const Text('Save mode')),
               ],
@@ -949,10 +1010,10 @@ class _SystemScreenState extends State<SystemScreen> {
     }
   }
 
-  Future<void> _setRouterLanguageEnglish() async {
+  Future<void> _setRouterLanguage(String code, String label) async {
     try {
-      await widget.api.post('/api/v1/lua/Language/setLang', {'lang': 'en'});
-      advShowMsg(context, 'Router language set to English.');
+      await widget.api.post('/api/v1/lua/Language/setLang', {'lang': code});
+      advShowMsg(context, 'Router language set to $label.');
     } on SessionExpiredException {
       widget.onSessionExpired();
     } catch (e) {
@@ -1034,9 +1095,22 @@ class _SystemScreenState extends State<SystemScreen> {
                     value: _sessionMinutes,
                     onChanged: (v) => setState(() => _sessionMinutes = v),
                   ),
+                const SizedBox(height: 16),
                 FilledButton(onPressed: _saveSession, child: const Text('Save session timeout')),
-                const SizedBox(height: 12),
-                OutlinedButton(onPressed: _setRouterLanguageEnglish, child: const Text('Set router language to English')),
+                const SizedBox(height: 16),
+                const Text('Router language', style: TextStyle(fontWeight: FontWeight.w700)),
+                const SizedBox(height: 8),
+                const Text('Only the languages stock actually ships are offered. Indonesian is not a stock language pack, so it is not offered here.', style: TextStyle(color: appMuted, fontSize: 12, height: 1.45)),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    OutlinedButton(onPressed: () => _setRouterLanguage('en', 'English'), child: const Text('English')),
+                    OutlinedButton(onPressed: () => _setRouterLanguage('zh_cn', 'Chinese'), child: const Text('Chinese')),
+                    OutlinedButton(onPressed: () => _setRouterLanguage('japan', 'Japanese'), child: const Text('Japanese')),
+                  ],
+                ),
               ],
             ),
           ),
@@ -1062,8 +1136,9 @@ class _SystemScreenState extends State<SystemScreen> {
                   value: LedMode.fromCode(_ledAll),
                   onChanged: (v) => setState(() => _ledAll = v.code),
                 ),
-                Text(LedMode.fromCode(_ledAll).description, style: const TextStyle(color: appMuted, fontSize: 12)),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
+                Text(LedMode.fromCode(_ledAll).description, style: const TextStyle(color: appMuted, fontSize: 12, height: 1.45)),
+                const SizedBox(height: 16),
                 for (var i = 0; i < _ledSchedules.length; i++) _ledScheduleCard(i),
                 OutlinedButton.icon(
                   onPressed: () => setState(() => _ledSchedules.add({'enable': true, 'week': <String>['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'], 'time': <String>['22:00', '06:00']})),
@@ -1186,6 +1261,37 @@ class _FilterScreenState extends State<FilterScreen> {
     }
   }
 
+  Future<void> _pickFilterDevice() async {
+    try {
+      final res = await widget.api.post('/api/v1/lua/OnlineUsers/sta_list', {'page': 1, 'size': 100});
+      final list = listOf(dataOf(res) is Map ? (dataOf(res) as Map)['list'] : const []);
+      final opts = <(String, String, String?)>[];
+      final names = <String, String>{};
+      for (final m in list.whereType<Map>()) {
+        final mac = str(m['mac'], '');
+        if (mac.isEmpty) continue;
+        final name = str(m['hostName'] ?? m['deviceName'], 'Unknown device');
+        final ip = str(m['ip'], '');
+        names[mac.toUpperCase()] = name;
+        opts.add((mac, name, ip.isEmpty ? 'MAC $mac' : 'MAC $mac · $ip'));
+      }
+      if (opts.isEmpty) {
+        advShowMsg(context, 'No online devices to pick from.');
+        return;
+      }
+      final picked = await showChoiceSheet<String>(context, title: 'Pick a connected device', options: opts, current: _mac.text.trim());
+      if (picked != null) {
+        setState(() {
+          _mac.text = picked;
+          final name = names[picked.toUpperCase()];
+          if (name != null && name != 'Unknown device') _name.text = name;
+        });
+      }
+    } catch (e) {
+      advShowMsg(context, e is ApiException ? e.message : 'Failed to load devices.');
+    }
+  }
+
   Future<void> _add() async {
     if (_name.text.trim().isEmpty || _mac.text.trim().isEmpty) {
       advShowMsg(context, 'Name and MAC are required.');
@@ -1258,6 +1364,8 @@ class _FilterScreenState extends State<FilterScreen> {
               children: [
                 advField(_name, 'Device name'),
                 advField(_mac, 'MAC address'),
+                OutlinedButton(onPressed: _pickFilterDevice, child: const Text('Pick a connected device')),
+                const SizedBox(height: 12),
                 FilledButton(onPressed: _add, child: const Text('Add device')),
                 const SizedBox(height: 16),
                 OutlinedButton(onPressed: _toggleMode, child: Text('Switch to ${_type == 'deny' ? 'whitelist' : 'blacklist'} mode')),
