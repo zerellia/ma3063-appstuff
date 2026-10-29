@@ -352,6 +352,19 @@ String formatFirmwareSize(dynamic v) {
   return '${mb.toStringAsFixed(1)} MB';
 }
 
+/// Connector v162 /tmp free space. The connector ping returns tmp_free_kb
+/// with the unit in the field name (kilobytes from df -k /tmp), so this
+/// divides by 1024 exactly once, with one decimal. When the connector is
+/// absent or the field is missing, keep the existing unknown behaviour;
+/// this never claims the stock Upgrade endpoint returns a size, because
+/// stock returns a boolean flag, not a size.
+String formatTmpFreeSpace(dynamic kb) {
+  if (kb == null) return 'Free size: unknown';
+  final n = double.tryParse(kb.toString());
+  if (n == null || n < 0) return 'Free size: unknown';
+  return 'Free /tmp space (connector): ${(n / 1024).toStringAsFixed(1)} MB';
+}
+
 /// Router time: the stock Time/asyncTime value is milliseconds, but older
 /// code treated it as seconds and produced year 58796. Magnitude decides:
 /// values above 100000000000 are already milliseconds, smaller values are

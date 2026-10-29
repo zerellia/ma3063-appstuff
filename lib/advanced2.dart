@@ -720,6 +720,7 @@ class _SystemScreenState extends State<SystemScreen> {
   List<Map<String, dynamic>> _ledSchedules = [];
   String _firmware = '-';
   String _freeSize = '-';
+  double? _tmpFreeKb;
   static const _days = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 
   @override
@@ -818,6 +819,17 @@ class _SystemScreenState extends State<SystemScreen> {
       final fd = dataOf(f);
       if (fd is Map && fd['freeSize'] != null) _freeSize = str(fd['freeSize']);
     } catch (_) {}
+    try {
+      final cg = await widget.api.get('/api/maapp.lua?action=ping');
+      final cd = dataOf(cg);
+      if (cd is Map && cd['connector'] == 'maapp' && cd['tmp_free_kb'] != null) {
+        _tmpFreeKb = double.tryParse(cd['tmp_free_kb'].toString());
+      } else {
+        _tmpFreeKb = null;
+      }
+    } catch (_) {
+      _tmpFreeKb = null;
+    }
     if (mounted) setState(() => _loading = false);
   }
 
@@ -966,7 +978,10 @@ class _SystemScreenState extends State<SystemScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('Version: $_firmware', style: const TextStyle(fontWeight: FontWeight.w700)),
-                Text('Free size: ${formatFirmwareSize(_freeSize)}', style: const TextStyle(color: appMuted)),
+                if (_tmpFreeKb != null)
+                  Text(formatTmpFreeSpace(_tmpFreeKb), style: const TextStyle(color: appMuted))
+                else
+                  Text('Free size: ${formatFirmwareSize(_freeSize)}', style: const TextStyle(color: appMuted)),
                 const SizedBox(height: 8),
                 const Text('Firmware file upload and factory reset are not in this build.', style: TextStyle(color: appMuted, fontSize: 12, height: 1.45)),
               ],
