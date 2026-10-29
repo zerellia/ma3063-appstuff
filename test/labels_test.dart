@@ -97,6 +97,6 @@ void main() {
 
   test('Firmware size formats in MB', () {
     expect(formatFirmwareSize('12.5'), contains('MB'));
-    expect(formatFirmwareSize(''), 'Free space: unknown');
+    expect(formatFirmwareSize(''), 'unknown');
   });
 }

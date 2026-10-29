@@ -28,7 +28,7 @@ Future<bool> advConfirm(BuildContext context, String title, String body) async {
 
 Widget advField(TextEditingController c, String label, {TextInputType? keyboardType}) {
   return Padding(
-    padding: const EdgeInsets.only(bottom: 10),
+    padding: const EdgeInsets.only(bottom: 16),
     child: TextField(controller: c, keyboardType: keyboardType, decoration: InputDecoration(labelText: label)),
   );
 }
@@ -141,9 +141,9 @@ class _BehaviorScreenState extends State<BehaviorScreen> {
                   ChipInput(values: urls, onChanged: (v) => setD(() => urls = v), addLabel: 'Add a blocked website', hint: 'example.com')
                 else
                   ChipInput(values: hosts, onChanged: (v) => setD(() => hosts = v), addLabel: 'Add a hostname', hint: 'example.com'),
-                const SizedBox(height: 8),
+                const SizedBox(height: 16),
                 TimePickerRow(label: 'Start time', value: startTod, onChanged: (v) => setD(() => startTod = v), onClear: () => setD(() => startTod = null)),
-                const SizedBox(height: 8),
+                const SizedBox(height: 16),
                 TimePickerRow(label: 'End time', value: endTod, onChanged: (v) => setD(() => endTod = v), onClear: () => setD(() => endTod = null)),
                 const SizedBox(height: 8),
                 WeekdayChips(selected: days.toSet(), onChanged: (v) => setD(() => days = v.toList())),
@@ -231,6 +231,7 @@ class _BehaviorScreenState extends State<BehaviorScreen> {
         onRefresh: _load,
         child: DetailScroll(
   title: 'Parental control',
+  loading: _loading,
   children: [
             advError(_error),
             GlassCard(
@@ -274,7 +275,7 @@ class _BehaviorScreenState extends State<BehaviorScreen> {
                   ),
                 ),
             FilledButton.icon(onPressed: _rules.length >= 32 ? null : () => _edit(), icon: const Icon(Icons.add), label: const Text('Add rule')),
-            const SizedBox(height: 8),
+            const SizedBox(height: 16),
             OutlinedButton.icon(onPressed: _load, icon: const Icon(Icons.refresh), label: const Text('Refresh')),
           ],
         ),
@@ -414,6 +415,7 @@ class _RadioScreenState extends State<RadioScreen> {
     return Scaffold(
             body: DetailScroll(
   title: 'Radio',
+  loading: _loading,
   children: [
           advError(_error),
           if (_loading)
@@ -428,15 +430,15 @@ class _RadioScreenState extends State<RadioScreen> {
                 SwitchListTile(
                   value: _wifiFirst,
                   onChanged: (v) => setState(() => _wifiFirst = v),
-                  title: const Text('Prefer WiFi first'),
-                  subtitle: const Text('Prefer WiFi when both WiFi and wired are available.', style: TextStyle(color: appMuted)),
+                  title: const Text('Prefer 5 GHz first (Band steering)'),
+                  subtitle: const Text('Steer supporting devices to 5G first.', style: TextStyle(color: appMuted)),
                 ),
 
               ],
             ),
           ),
           FilledButton(onPressed: _save, child: const Text('Save radio')),
-          const SizedBox(height: 8),
+          const SizedBox(height: 16),
           OutlinedButton.icon(onPressed: _load, icon: const Icon(Icons.refresh), label: const Text('Refresh')),
         ],
       ),
@@ -459,7 +461,7 @@ class _RadioScreenState extends State<RadioScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 16),
           choiceRow('Channel', channelLabel(r['channel'].toString(), is5g: str(r['type']).contains('5'), freq: _chFreq[r['channel'].toString()]), null, () async {
             final is5 = str(r['type']).contains('5');
             final base = channels.isEmpty ? channelOptions(is5g: is5) : channels;
@@ -471,7 +473,7 @@ class _RadioScreenState extends State<RadioScreen> {
             final picked = await showChoiceSheet<String>(context, title: 'Channel', options: opts, current: r['channel'].toString());
             if (picked != null) setState(() => _radios[i]['channel'] = picked);
           }),
-          const SizedBox(height: 8),
+          const SizedBox(height: 16),
           choiceRow('Bandwidth', bandwidthLabel(r['bandWidth'].toString(), is5g: str(r['type']).contains('5')), null, () async {
             final is5 = str(r['type']).contains('5');
             final codes = is5 ? ['auto', 'auto_160', '20', '40', '80', '160'] : ['20', '40', '20_40'];
@@ -675,6 +677,7 @@ class _MeshScreenState extends State<MeshScreen> {
     return Scaffold(
             body: DetailScroll(
   title: 'Mesh',
+  loading: _loading,
   children: [
           advError(_error),
           advSection('Topology'),
@@ -727,7 +730,7 @@ class _MeshScreenState extends State<MeshScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(MeshMode.fromCode(_mode).description, style: const TextStyle(color: appMuted, fontSize: 12)),
-                const SizedBox(height: 8),
+                const SizedBox(height: 16),
                 FilledButton(onPressed: _saveMode, child: const Text('Save mesh mode')),
               ],
             ),
@@ -740,7 +743,7 @@ class _MeshScreenState extends State<MeshScreen> {
                 RoamingSlider(label: '2.4 GHz threshold', dbm: _t24i, onChanged: (v) => setState(() => _t24i = v)),
                 const SizedBox(height: 8),
                 RoamingSlider(label: '5 GHz threshold', dbm: _t5i, onChanged: (v) => setState(() => _t5i = v)),
-                const SizedBox(height: 8),
+                const SizedBox(height: 16),
                 FilledButton(onPressed: _saveRoaming, child: const Text('Save roaming')),
               ],
             ),
@@ -760,7 +763,7 @@ class _MeshScreenState extends State<MeshScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text('This starts the stock mesh pairing step. A real mesh device must be nearby, and the result is checked by node count, not assumed.', style: TextStyle(color: appMuted, height: 1.45)),
-                const SizedBox(height: 8),
+                const SizedBox(height: 16),
                 FilledButton(onPressed: _startPairing, child: const Text('Start mesh pairing')),
                 if (_pairResult.isNotEmpty) ...[const SizedBox(height: 8), Text(_pairResult, style: const TextStyle(height: 1.45))],
               ],

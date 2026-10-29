@@ -277,6 +277,7 @@ class _NetworkScreenState extends State<NetworkScreen> {
     return Scaffold(
             body: DetailScroll(
   title: 'Network',
+  loading: _loading,
   children: [
           advError(_error),
           if (_loading) skeletonCard(),
@@ -295,7 +296,7 @@ class _NetworkScreenState extends State<NetworkScreen> {
                     CustomChoiceChip(label: 'Quad9', selected: false, onTap: () => setState(() { _dns1.text = '9.9.9.9'; _dns2.text = '149.112.112.112'; })),
                   ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 16),
                 FilledButton(onPressed: _saveDns, child: const Text('Save DNS')),
               ],
             ),
@@ -307,7 +308,7 @@ class _NetworkScreenState extends State<NetworkScreen> {
                 advField(_dmz, 'DMZ host IP (empty clears it)'),
                 OutlinedButton(onPressed: _pickDmzDevice, child: const Text('Pick a device')),
                 const Text('DMZ opens all ports to one device. Only use it for a device you trust.', style: TextStyle(color: appMuted, fontSize: 12, height: 1.45)),
-                const SizedBox(height: 8),
+                const SizedBox(height: 16),
                 FilledButton(onPressed: _saveDmz, child: const Text('Save DMZ')),
               ],
             ),
@@ -364,7 +365,7 @@ class _NetworkScreenState extends State<NetworkScreen> {
                   advField(_wanDns, 'Static DNS, space separated'),
                 ],
                 FilledButton(onPressed: _saveWan, child: const Text('Save WAN')),
-                const SizedBox(height: 8),
+                const SizedBox(height: 16),
                 OutlinedButton(onPressed: _detectWan, child: const Text('Detect WAN')),
                 if (_detect.isNotEmpty) ...[const SizedBox(height: 8), Text(_detect, style: const TextStyle(height: 1.45))],
               ],
@@ -612,6 +613,7 @@ class _Ipv6ScreenState extends State<Ipv6Screen> {
     return Scaffold(
             body: DetailScroll(
   title: 'IPv6',
+  loading: _loading,
   children: [
           advError(_error),
           if (_loading) skeletonCard(),
@@ -649,7 +651,7 @@ class _Ipv6ScreenState extends State<Ipv6Screen> {
                   ),
                 ),
                 Text(Ipv6Mode.fromCode(_mode).description, style: const TextStyle(color: appMuted, fontSize: 12)),
-                const SizedBox(height: 8),
+                const SizedBox(height: 16),
                 FilledButton(onPressed: _saveMode, child: const Text('Save mode')),
               ],
             ),
@@ -746,7 +748,7 @@ class _SystemScreenState extends State<SystemScreen> {
       final t = await widget.api.get('/api/v1/lua/Time/asyncTime');
       final td = dataOf(t);
       final n = numOrNull(td is Map ? td['time'] ?? td : td);
-      if (n != null) _routerTime = formatDisplayDateTime(DateTime.fromMillisecondsSinceEpoch(n.round() * 1000));
+      if (n != null) _routerTime = formatDisplayDateTime(routerTimestamp(n));
     } catch (_) {}
     try {
       final tz = await widget.api.get('/api/v1/lua/Time/getTimezone');
@@ -954,6 +956,7 @@ class _SystemScreenState extends State<SystemScreen> {
     return Scaffold(
             body: DetailScroll(
   title: 'System',
+  loading: _loading,
   children: [
           advError(_error),
           if (_loading) skeletonCard(),
@@ -985,7 +988,7 @@ class _SystemScreenState extends State<SystemScreen> {
               children: [
                 Text('Router time: $_routerTime', style: const TextStyle(color: appMuted)),
                 Text('Timezone: $_tzName', style: const TextStyle(color: appMuted)),
-                const SizedBox(height: 8),
+                const SizedBox(height: 16),
                 choiceRow('Timezone', timezoneOptions.where((t) => t.$1 == _tzCode).isEmpty ? _tzCode : timezoneOptions.firstWhere((t) => t.$1 == _tzCode).$2, null, () async {
                   final opts = <(String, String, String?)>[for (final t in timezoneOptions) (t.$1, t.$2, null)];
                   if (!opts.any((o) => o.$1 == _tzCode)) opts.insert(0, (_tzCode, 'Custom setting', 'Tap to choose a standard option.'));
@@ -993,7 +996,7 @@ class _SystemScreenState extends State<SystemScreen> {
                   if (picked != null) setState(() => _tzCode = picked);
                 }),
                 FilledButton(onPressed: _saveTimezone, child: const Text('Save timezone')),
-                const SizedBox(height: 8),
+                const SizedBox(height: 16),
                 OutlinedButton(onPressed: _syncPhoneTime, child: const Text('Sync router time to this phone')),
               ],
             ),
@@ -1004,7 +1007,7 @@ class _SystemScreenState extends State<SystemScreen> {
               children: [
                 SwitchListTile(value: _rebootEnabled, onChanged: (v) => setState(() => _rebootEnabled = v), title: const Text('Scheduled reboot')),
                 WeekdayChips(selected: _rebootDays, onChanged: (v) => setState(() => _rebootDays = v)),
-                const SizedBox(height: 8),
+                const SizedBox(height: 16),
                 TimePickerRow(label: 'Reboot time', value: _rebootTime, onChanged: (v) => setState(() => _rebootTime = v)),
                 FilledButton(onPressed: _saveReboot, child: const Text('Save scheduled reboot')),
               ],
@@ -1060,7 +1063,7 @@ class _SystemScreenState extends State<SystemScreen> {
                 ),
                 const SizedBox(height: 8),
                 const Text('Schedules below are sent as a list. An empty list would not save a schedule.', style: TextStyle(color: appMuted, fontSize: 12, height: 1.45)),
-                const SizedBox(height: 8),
+                const SizedBox(height: 16),
                 FilledButton(onPressed: _saveLed, child: const Text('Save LED')),
               ],
             ),
@@ -1098,7 +1101,7 @@ class _SystemScreenState extends State<SystemScreen> {
             selected: week.toSet(),
             onChanged: (v) => setState(() => _ledSchedules[i]['week'] = v.toList()),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 16),
           TimePickerRow(
             label: 'Start',
             value: parseDisplayTime(time.isNotEmpty ? time[0] : ''),
@@ -1229,6 +1232,7 @@ class _FilterScreenState extends State<FilterScreen> {
     return Scaffold(
             body: DetailScroll(
   title: 'MAC filter',
+  loading: _loading,
   children: [
           advError(_error),
           SegmentedControl<String>(
@@ -1246,7 +1250,7 @@ class _FilterScreenState extends State<FilterScreen> {
                 advField(_name, 'Device name'),
                 advField(_mac, 'MAC address'),
                 FilledButton(onPressed: _add, child: const Text('Add device')),
-                const SizedBox(height: 8),
+                const SizedBox(height: 16),
                 OutlinedButton(onPressed: _toggleMode, child: Text('Switch to ${_type == 'deny' ? 'whitelist' : 'blacklist'} mode')),
               ],
             ),
@@ -1423,6 +1427,7 @@ class _MediaScreenState extends State<MediaScreen> {
     return Scaffold(
             body: DetailScroll(
   title: 'IPTV and multicast',
+  loading: _loading,
   children: [
           advError(_error),
           if (_loading) skeletonCard(),

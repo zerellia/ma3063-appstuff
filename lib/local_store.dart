@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// save a device rename on the router.
 class LocalStore {
   static const _nickKey = 'local_nicknames';
+  static const _iconsKey = 'local_device_icons';
   static const _histKey = 'local_device_history';
   static const _samplesKey = 'local_samples';
   static const _alertsKey = 'local_alerts';
@@ -30,6 +31,16 @@ class LocalStore {
   }
 
   static Future<Map<String, dynamic>> nicknames() => _readMap(_nickKey);
+
+  /// Local only device icons, keyed by upper-case MAC, value is the
+  /// icon key from deviceIconOptions. Never sent to the router.
+  static Future<Map<String, dynamic>> deviceIcons() => _readMap(_iconsKey);
+
+  static Future<void> setDeviceIcon(String mac, String iconKey) async {
+    final all = await deviceIcons();
+    all[mac.toUpperCase()] = iconKey;
+    await _writeMap(_iconsKey, all);
+  }
 
   static Future<void> setNickname(String mac, {String? name, String? room, String? group, bool? favourite}) async {
     final all = await nicknames();

@@ -338,9 +338,9 @@ TimeOfDay? parseDisplayTime(String s) {
 }
 
 String formatFirmwareSize(dynamic v) {
-  if (v == null) return 'Free space: unknown';
+  if (v == null) return 'unknown';
   final n = double.tryParse(v.toString());
-  if (n == null) return 'Free space: unknown';
+  if (n == null) return 'unknown';
   double mb;
   if (n >= 1000000) {
     mb = n / 1048576;
@@ -349,7 +349,33 @@ String formatFirmwareSize(dynamic v) {
   } else {
     mb = n;
   }
-  return 'Free space: ${mb.toStringAsFixed(1)} MB';
+  return '${mb.toStringAsFixed(1)} MB';
+}
+
+/// Router time: the stock Time/asyncTime value is milliseconds, but older
+/// code treated it as seconds and produced year 58796. Magnitude decides:
+/// values above 100000000000 are already milliseconds, smaller values are
+/// seconds and are multiplied by 1000. Both give 2026 for current dates.
+DateTime routerTimestamp(num raw) {
+  final v = raw.round();
+  return DateTime.fromMillisecondsSinceEpoch(v > 100000000000 ? v : v * 1000);
+}
+
+/// Settings WAN display: use the fallback (wanget) IP only when the primary
+/// network/info value is missing, otherwise keep the primary value. When
+/// both are missing, show Not connected, never a bare dash or 'PPPoE -'.
+String resolveWanInfo(String current, String fallbackProto, String fallbackIp) {
+  final missing = current == '-' || current.endsWith('· -') || current.endsWith('· ') || current.isEmpty;
+  if (!missing) return current;
+  if (fallbackIp.isEmpty || fallbackIp == '-') return 'Not connected';
+  if (fallbackProto.isEmpty || fallbackProto == '-' || fallbackProto == 'Not set') return fallbackIp;
+  return '$fallbackProto · $fallbackIp';
+}
+
+/// Settings DNS display: two missing values read as Not set, never '- · -'.
+String normalizeDnsDisplay(String joined) {
+  if (joined == '- · -' || joined == '-' || joined.isEmpty) return 'Not set';
+  return joined;
 }
 
 String humaniseKey(String key) {

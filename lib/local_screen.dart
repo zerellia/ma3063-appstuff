@@ -161,7 +161,7 @@ class _LocalScreenState extends State<LocalScreen> {
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             sliver: SliverList(
-              delegate: SliverChildListDelegate([
+              delegate: SliverChildListDelegate(_loading ? [skeletonCard()] : [
                 const GlassCard(
                   child: Text(
                     'Local only. Charts are samples taken while the app was open, history is recorded on this phone, and the speed test measures this phone. None of this changes the router.',

@@ -122,12 +122,15 @@ class CustomScrollList extends StatelessWidget {
 /// Detail screen scroll view: minimal back row as a sliver header,
 /// then the screen content as a SliverList. No AppBar widget.
 class DetailScroll extends StatelessWidget {
-  const DetailScroll({super.key, required this.title, this.subtitle, this.actions = const [], this.padding = const EdgeInsets.fromLTRB(16, 0, 16, 16), required this.children});
+  const DetailScroll({super.key, required this.title, this.subtitle, this.actions = const [], this.padding = const EdgeInsets.fromLTRB(16, 0, 16, 16), required this.children, this.loading = false});
   final String title;
   final String? subtitle;
   final List<Widget> actions;
   final EdgeInsets padding;
   final List<Widget> children;
+  /// When true, ONLY the top bar and a skeleton render. No form field,
+  /// button, or list from children is shown while loading.
+  final bool loading;
   @override
   Widget build(BuildContext context) {
     return CustomScrollView(
@@ -143,7 +146,7 @@ class DetailScroll extends StatelessWidget {
         ),
         SliverPadding(
           padding: padding,
-          sliver: SliverList(delegate: SliverChildListDelegate(children)),
+          sliver: SliverList(delegate: SliverChildListDelegate(loading ? [skeletonCard()] : children)),
         ),
       ],
     );
