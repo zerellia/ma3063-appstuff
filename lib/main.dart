@@ -960,7 +960,7 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: 8),
           OutlinedButton.icon(onPressed: _load, icon: const Icon(Icons.refresh), label: const Text('Refresh')),
           const SizedBox(height: 8),
-          const Text('No auto refresh. Tap Refresh to update, the same rule as the web panel.', style: TextStyle(color: reyeeMuted)),
+
         ],
       ),
     );
