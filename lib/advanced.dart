@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'api.dart';
 import 'theme.dart';
+import 'labels.dart';
+import 'choice_widgets.dart';
 
 void advShowMsg(BuildContext context, String text) {
   try {
@@ -44,7 +46,7 @@ Widget advError(String? message) {
 Widget advSection(String title) {
   return Padding(
     padding: const EdgeInsets.fromLTRB(4, 16, 4, 8),
-    child: Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: appInk)),
+    child: Text(title.toUpperCase(), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, letterSpacing: 0.4, color: appMuted)),
   );
 }
 
@@ -98,13 +100,15 @@ class _BehaviorScreenState extends State<BehaviorScreen> {
     final isEdit = rule != null;
     final name = TextEditingController(text: str(rule?['ruleName'], ''));
     final mac = TextEditingController(text: str(rule?['mac'], ''));
-    final urls = TextEditingController(text: str(rule?['urlString'], ''));
-    final hosts = TextEditingController(text: str(rule?['hostnames'], ''));
-    final start = TextEditingController(text: str(rule?['startTime'], ''));
-    final end = TextEditingController(text: str(rule?['endTime'], ''));
+    // url, host, start and end are held as chips and time pickers below.
     var target = str(rule?['target'], 'REJECT');
     if (target != 'REJECT' && target != 'ACCEPT') target = 'REJECT';
     var days = List<String>.from(rule?['weekdays'] is List ? (rule!['weekdays'] as List).map((e) => e.toString()) : _days);
+    var by = str(rule?['by'], 'ip') == 'mac' ? 'mac' : 'ip';
+    var urls = splitListValue(str(rule?['urlString'], ''));
+    var hosts = splitListValue(str(rule?['hostnames'], ''));
+    TimeOfDay? startTod = parseDisplayTime(str(rule?['startTime'], ''));
+    TimeOfDay? endTod = parseDisplayTime(str(rule?['endTime'], ''));
     String? dialogError;
     final saved = await showDialog<bool>(
       context: context,
@@ -120,38 +124,28 @@ class _BehaviorScreenState extends State<BehaviorScreen> {
                 const SizedBox(height: 10),
                 TextField(controller: mac, decoration: const InputDecoration(labelText: 'Device MAC')),
                 const SizedBox(height: 10),
-                DropdownButtonFormField<String>(
-                  initialValue: target,
-                  items: const [DropdownMenuItem(value: 'REJECT', child: Text('Block')), DropdownMenuItem(value: 'ACCEPT', child: Text('Allow'))],
-                  onChanged: (v) => setD(() => target = v ?? target),
-                  decoration: const InputDecoration(labelText: 'Action'),
+                SegmentedControl<String>(
+                  options: const [('REJECT', 'Block'), ('ACCEPT', 'Allow')],
+                  value: target,
+                  onChanged: (v) => setD(() => target = v),
                 ),
                 const SizedBox(height: 10),
-                TextField(controller: urls, decoration: const InputDecoration(labelText: 'Blocked URLs (optional)')),
-                const SizedBox(height: 10),
-                TextField(controller: hosts, decoration: const InputDecoration(labelText: 'Hostnames (optional)')),
-                const SizedBox(height: 10),
-                TextField(controller: start, decoration: const InputDecoration(labelText: 'Start time HH:MM (optional)')),
-                const SizedBox(height: 10),
-                TextField(controller: end, decoration: const InputDecoration(labelText: 'End time HH:MM (optional)')),
-                const SizedBox(height: 10),
-                Wrap(
-                  spacing: 6,
-                  children: [
-                    for (final d in _days)
-                      FilterChip(
-                        label: Text(d),
-                        selected: days.contains(d),
-                        onSelected: (v) => setD(() {
-                          if (v) {
-                            if (!days.contains(d)) days.add(d);
-                          } else {
-                            days.remove(d);
-                          }
-                        }),
-                      ),
-                  ],
+                SegmentedControl<String>(
+                  options: const [('ip', 'By website list'), ('mac', 'By device list')],
+                  value: by,
+                  onChanged: (v) => setD(() => by = v),
                 ),
+                const SizedBox(height: 10),
+                if (by == 'ip')
+                  ChipInput(values: urls, onChanged: (v) => setD(() => urls = v), addLabel: 'Add a blocked website', hint: 'example.com')
+                else
+                  ChipInput(values: hosts, onChanged: (v) => setD(() => hosts = v), addLabel: 'Add a hostname', hint: 'example.com'),
+                const SizedBox(height: 10),
+                TimePickerRow(label: 'Start time', value: startTod, onChanged: (v) => setD(() => startTod = v), onClear: () => setD(() => startTod = null)),
+                const SizedBox(height: 10),
+                TimePickerRow(label: 'End time', value: endTod, onChanged: (v) => setD(() => endTod = v), onClear: () => setD(() => endTod = null)),
+                const SizedBox(height: 10),
+                WeekdayChips(selected: days.toSet(), onChanged: (v) => setD(() => days = v.toList())),
               ],
             ),
           ),
@@ -173,7 +167,7 @@ class _BehaviorScreenState extends State<BehaviorScreen> {
     );
     if (saved != true) return;
     final payload = {
-      'by': 'ip',
+      'by': by,
       'mac': mac.text.trim(),
       'src': 'lan',
       'dest': 'wan',
@@ -185,11 +179,11 @@ class _BehaviorScreenState extends State<BehaviorScreen> {
       'target': target,
       'tmngtName': '',
       'ruleName': name.text.trim(),
-      'urlString': urls.text.trim(),
-      'hostnames': hosts.text.trim(),
+      'urlString': by == 'ip' ? urls.join(', ') : '',
+      'hostnames': by == 'mac' ? hosts.join(', ') : '',
       'weekdays': days,
-      'startTime': start.text.trim(),
-      'endTime': end.text.trim(),
+      'startTime': startTod == null ? '' : formatDisplayTime(startTod!),
+      'endTime': endTod == null ? '' : formatDisplayTime(endTod!),
       'mode': '0',
     };
     try {
@@ -257,13 +251,15 @@ class _BehaviorScreenState extends State<BehaviorScreen> {
                     children: [
                       Row(
                         children: [
-                          Expanded(child: Text(str(r['ruleName']), style: const TextStyle(fontWeight: FontWeight.w800))),
-                          pillChip(str(r['target'], 'REJECT'), active: str(r['target']) == 'REJECT', color: str(r['target']) == 'REJECT' ? appRed : appGreen),
+                          Expanded(child: Text(str(r['ruleName']), style: const TextStyle(fontWeight: FontWeight.w700))),
+                          pillChip(BehaviorTarget.fromCode(r['target']).label, active: str(r['target']) == 'REJECT', color: str(r['target']) == 'REJECT' ? appRed : appGreen),
                         ],
                       ),
                       const SizedBox(height: 6),
                       Text('MAC ${str(r['mac'])}', style: const TextStyle(color: appMuted)),
-                      if (str(r['urlString'], '').isNotEmpty) Text('URLs: ${str(r['urlString'])}', style: const TextStyle(color: appMuted)),
+                      if (str(r['urlString'], '').isNotEmpty) Text('Websites: ${str(r['urlString'])}', style: const TextStyle(color: appMuted)),
+                      if (str(r['hostnames'], '').isNotEmpty) Text('Hostnames: ${str(r['hostnames'])}', style: const TextStyle(color: appMuted)),
+                      Text('Days: ${Weekday.summary(r['weekdays'] is List ? (r['weekdays'] as List).map((e) => e.toString()).toList() : const <String>[])}', style: const TextStyle(color: appMuted)),
                       if (str(r['startTime'], '').isNotEmpty || str(r['endTime'], '').isNotEmpty)
                         Text('Time ${str(r['startTime'])} to ${str(r['endTime'])}', style: const TextStyle(color: appMuted)),
                       const SizedBox(height: 10),
@@ -303,7 +299,7 @@ class _RadioScreenState extends State<RadioScreen> {
   List<Map<String, dynamic>> _radios = [];
   List<String> _ch24 = [];
   List<String> _ch50 = [];
-  List<String> _bw50 = [];
+  final Map<String, String> _chFreq = {};
   bool _wifiFirst = false;
 
   @override
@@ -339,15 +335,24 @@ class _RadioScreenState extends State<RadioScreen> {
         if (cd is Map) {
           final c24 = cd['channel2G'];
           final c50 = cd['channel5G'];
-          if (c24 is Map && c24['items'] is List) _ch24 = (c24['items'] as List).map((e) => e.toString()).toList();
-          if (c50 is Map && c50['items'] is List) _ch50 = (c50['items'] as List).map((e) => e.toString()).toList();
+          String parseChannel(dynamic e) {
+            if (e is Map) {
+              final v = (e['v'] ?? e['value'] ?? e['channel'])?.toString() ?? '';
+              final k = e['k']?.toString();
+              if (v.isNotEmpty && k != null && k.isNotEmpty) _chFreq[v] = k;
+              return v;
+            }
+            return e.toString();
+          }
+
+          if (c24 is Map && c24['items'] is List) _ch24 = (c24['items'] as List).map(parseChannel).where((e) => e.isNotEmpty).toList();
+          if (c50 is Map && c50['items'] is List) _ch50 = (c50['items'] as List).map(parseChannel).where((e) => e.isNotEmpty).toList();
         }
       } catch (_) {}
       try {
         final bw = await widget.api.get('/api/v1/lua/Radio/getBandWidthMap');
         final bd = dataOf(bw);
         if (bd is Map && bd['bandForFive'] is List) {
-          _bw50 = (bd['bandForFive'] as List).map((e) => e is Map ? (e['value'] ?? e['label']).toString() : e.toString()).toList();
         }
       } catch (_) {}
     } on SessionExpiredException {
@@ -424,11 +429,10 @@ class _RadioScreenState extends State<RadioScreen> {
                 SwitchListTile(
                   value: _wifiFirst,
                   onChanged: (v) => setState(() => _wifiFirst = v),
-                  title: const Text('WiFi first'),
-                  subtitle: const Text('Prefer WiFi when both WiFi and wired are available, as in the web panel.', style: TextStyle(color: appMuted)),
+                  title: const Text('Prefer WiFi first'),
+                  subtitle: const Text('Prefer WiFi when both WiFi and wired are available.', style: TextStyle(color: appMuted)),
                 ),
-                const SizedBox(height: 8),
-                const Text('Stock power codes: 0 is high, 1 is medium, 2 is low. Auto is only used when the router returns an empty value.', style: TextStyle(color: appMuted, fontSize: 12, height: 1.45)),
+
               ],
             ),
           ),
@@ -443,14 +447,13 @@ class _RadioScreenState extends State<RadioScreen> {
   Widget _radioCard(int i) {
     final r = _radios[i];
     final channels = _channelsFor(r);
-    final bwOptions = ['auto', 'auto_160', '20', '40', '80', '160', ..._bw50].toSet().toList();
     return GlassCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Expanded(child: Text('${str(r['type'])} radio', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16))),
+              Expanded(child: Text('${radioTypeLabel(r['type'], r['radioIndex'])} radio', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16))),
               Switch(
                 value: r['enable'] == true,
                 onChanged: (v) => setState(() => _radios[i]['enable'] = v),
@@ -458,30 +461,51 @@ class _RadioScreenState extends State<RadioScreen> {
             ],
           ),
           const SizedBox(height: 10),
-          DropdownButtonFormField<String>(
-            initialValue: channels.contains(r['channel'].toString()) ? r['channel'].toString() : 'auto',
-            items: channels.map((c) => DropdownMenuItem(value: c, child: Text(c == 'auto' ? 'Auto channel' : 'Channel $c'))).toList(),
-            onChanged: (v) => setState(() => _radios[i]['channel'] = v ?? 'auto'),
-            decoration: const InputDecoration(labelText: 'Channel'),
-          ),
+          choiceRow('Channel', channelLabel(r['channel'].toString(), is5g: str(r['type']).contains('5'), freq: _chFreq[r['channel'].toString()]), null, () async {
+            final is5 = str(r['type']).contains('5');
+            final base = channels.isEmpty ? channelOptions(is5g: is5) : channels;
+            final opts = <(String, String, String?)>[];
+            for (final c in base) {
+              opts.add((c, channelLabel(c, is5g: is5, freq: _chFreq[c]), null));
+            }
+            if (!base.contains(r['channel'].toString())) opts.insert(0, (r['channel'].toString(), 'Custom setting', 'Tap to choose a standard option.'));
+            final picked = await showChoiceSheet<String>(context, title: 'Channel', options: opts, current: r['channel'].toString());
+            if (picked != null) setState(() => _radios[i]['channel'] = picked);
+          }),
           const SizedBox(height: 10),
-          DropdownButtonFormField<String>(
-            initialValue: bwOptions.contains(r['bandWidth'].toString()) ? r['bandWidth'].toString() : 'auto',
-            items: bwOptions.map((b) => DropdownMenuItem(value: b, child: Text(b))).toList(),
-            onChanged: (v) => setState(() => _radios[i]['bandWidth'] = v ?? 'auto'),
-            decoration: const InputDecoration(labelText: 'Bandwidth'),
-          ),
+          choiceRow('Bandwidth', bandwidthLabel(r['bandWidth'].toString(), is5g: str(r['type']).contains('5')), null, () async {
+            final is5 = str(r['type']).contains('5');
+            final codes = is5 ? ['auto', 'auto_160', '20', '40', '80', '160'] : ['20', '40', '20_40'];
+            final opts = <(String, String, String?)>[for (final b in codes) (b, bandwidthLabel(b, is5g: is5), null)];
+            if (!codes.contains(r['bandWidth'].toString())) opts.insert(0, (r['bandWidth'].toString(), 'Custom setting', 'Tap to choose a standard option.'));
+            final picked = await showChoiceSheet<String>(context, title: 'Bandwidth', options: opts, current: r['bandWidth'].toString());
+            if (picked != null) setState(() => _radios[i]['bandWidth'] = picked);
+          }),
           const SizedBox(height: 10),
-          DropdownButtonFormField<String>(
-            initialValue: ['auto', '0', '1', '2'].contains(r['txpower'].toString()) ? r['txpower'].toString() : 'auto',
-            items: const [
-              DropdownMenuItem(value: 'auto', child: Text('Auto power')),
-              DropdownMenuItem(value: '0', child: Text('High (0)')),
-              DropdownMenuItem(value: '1', child: Text('Medium (1)')),
-              DropdownMenuItem(value: '2', child: Text('Low (2)')),
-            ],
-            onChanged: (v) => setState(() => _radios[i]['txpower'] = v ?? 'auto'),
-            decoration: const InputDecoration(labelText: 'Transmit power'),
+          const Text('Signal strength', style: TextStyle(fontWeight: FontWeight.w600)),
+          const SizedBox(height: 6),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: SegmentedControl<TxPower>(
+              options: const [(TxPower.automatic, 'Automatic'), (TxPower.throughWall, 'Through-wall'), (TxPower.balanced, 'Balanced'), (TxPower.eco, 'Eco')],
+              value: TxPower.fromCode(r['txpower']),
+              onChanged: (v) => setState(() => _radios[i]['txpower'] = v.code),
+            ),
+          ),
+          Text(TxPower.fromCode(r['txpower']).description, style: const TextStyle(color: appMuted, fontSize: 12)),
+          const SizedBox(height: 10),
+          const Text('WiFi generation', style: TextStyle(fontWeight: FontWeight.w600)),
+          const SizedBox(height: 6),
+          SegmentedControl<String>(
+            options: const [('11ax', 'WiFi 6'), ('11ac', 'WiFi 5'), ('11n', 'WiFi 4')],
+            value: (r['hwmode'] ?? '11ax').toString(),
+            onChanged: (v) => setState(() => _radios[i]['hwmode'] = v),
+          ),
+          SwitchListTile(
+            value: (r['wmeSwitch'] ?? 'on').toString() == 'on',
+            onChanged: (v) => setState(() => _radios[i]['wmeSwitch'] = v ? 'on' : 'off'),
+            title: const Text('WMM'),
+            subtitle: const Text('Multimedia prioritisation for WiFi traffic.', style: TextStyle(color: appMuted)),
           ),
         ],
       ),
@@ -506,8 +530,8 @@ class _MeshScreenState extends State<MeshScreen> {
   Map<String, dynamic> _mainData = {};
   String _mode = '';
   bool _roaming = false;
-  String _t24 = '-70';
-  String _t5 = '-70';
+  int _t24i = -70;
+  int _t5i = -70;
   bool _easyMesh = false;
   String _pairResult = '';
 
@@ -546,8 +570,8 @@ class _MeshScreenState extends State<MeshScreen> {
         final rd = dataOf(rc);
         if (rd is Map) {
           _roaming = rd['roamingSwitch'] == 'enable';
-          if (rd['threshold24G'] != null) _t24 = rd['threshold24G'].toString();
-          if (rd['threshold5G'] != null) _t5 = rd['threshold5G'].toString();
+          if (rd['threshold24G'] != null) _t24i = int.tryParse(rd['threshold24G'].toString()) ?? -70;
+          if (rd['threshold5G'] != null) _t5i = int.tryParse(rd['threshold5G'].toString()) ?? -70;
         }
       } catch (_) {}
       try {
@@ -568,7 +592,7 @@ class _MeshScreenState extends State<MeshScreen> {
     try {
       await widget.api.post('/api/v1/lua/mesh/SetMesh', {'mode': _mode});
       await _load();
-      advShowMsg(context, 'Mesh mode saved and reloaded.');
+      advShowMsg(context, 'Mesh mode is now ${MeshMode.fromCode(_mode).label}.');
     } on SessionExpiredException {
       widget.onSessionExpired();
     } catch (e) {
@@ -577,12 +601,8 @@ class _MeshScreenState extends State<MeshScreen> {
   }
 
   Future<void> _saveRoaming() async {
-    final t24 = int.tryParse(_t24);
-    final t5 = int.tryParse(_t5);
-    if (t24 == null || t5 == null || t24 < -90 || t24 > -40 || t5 < -90 || t5 > -40) {
-      advShowMsg(context, 'Roaming thresholds must be between -90 and -40 dBm.');
-      return;
-    }
+    final t24 = _t24i.clamp(-90, -40);
+    final t5 = _t5i.clamp(-90, -40);
     try {
       await widget.api.post('/api/v1/lua/mesh/setMeshRoamingCfg', {
         'roamingSwitch': _roaming ? 'enable' : 'disable',
@@ -679,7 +699,8 @@ class _MeshScreenState extends State<MeshScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(str(_mainData['hostName'] ?? _mainData['hostname'], 'Main router'), style: const TextStyle(fontWeight: FontWeight.w800)),
+                            Text(str(_mainData['hostName'] ?? _mainData['hostname'], 'Main router'), style: const TextStyle(fontWeight: FontWeight.w700)),
+                            Text('Mode: ${MeshMode.fromCode(_mode).label}', style: const TextStyle(color: appMuted, fontSize: 12)),
                             Text('${meshNodeCount(_children.isEmpty ? {} : _children)} node(s) total. Lines are connections from the topology data only, no signal values are shown because the router does not report mesh signal strength.', style: const TextStyle(color: appMuted, fontSize: 12, height: 1.45)),
                           ],
                         ),
@@ -698,11 +719,16 @@ class _MeshScreenState extends State<MeshScreen> {
           GlassCard(
             child: Column(
               children: [
-                TextField(
-                  controller: TextEditingController(text: _mode),
-                  onChanged: (v) => _mode = v,
-                  decoration: const InputDecoration(labelText: 'Mesh mode (as returned by the router)'),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: SegmentedControl<MeshMode>(
+                    options: const [(MeshMode.controller, 'Main router'), (MeshMode.agent, 'Mesh child'), (MeshMode.unknown, 'Not in mesh')],
+                    value: MeshMode.fromCode(_mode),
+                    onChanged: (v) => setState(() => _mode = v.code),
+                  ),
                 ),
+                const SizedBox(height: 6),
+                Text(MeshMode.fromCode(_mode).description, style: const TextStyle(color: appMuted, fontSize: 12)),
                 const SizedBox(height: 10),
                 FilledButton(onPressed: _saveMode, child: const Text('Save mesh mode')),
               ],
@@ -713,9 +739,9 @@ class _MeshScreenState extends State<MeshScreen> {
             child: Column(
               children: [
                 SwitchListTile(value: _roaming, onChanged: (v) => setState(() => _roaming = v), title: const Text('Roaming enabled')),
-                TextField(controller: TextEditingController(text: _t24), onChanged: (v) => _t24 = v, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: '2.4 GHz threshold dBm (-90 to -40)')),
+                RoamingSlider(label: '2.4 GHz threshold', dbm: _t24i, onChanged: (v) => setState(() => _t24i = v)),
                 const SizedBox(height: 10),
-                TextField(controller: TextEditingController(text: _t5), onChanged: (v) => _t5 = v, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: '5 GHz threshold dBm (-90 to -40)')),
+                RoamingSlider(label: '5 GHz threshold', dbm: _t5i, onChanged: (v) => setState(() => _t5i = v)),
                 const SizedBox(height: 10),
                 FilledButton(onPressed: _saveRoaming, child: const Text('Save roaming')),
               ],

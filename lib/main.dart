@@ -7,6 +7,8 @@ import 'theme.dart';
 import 'local_store.dart';
 import 'advanced2.dart';
 import 'local_screen.dart';
+import 'labels.dart';
+import 'choice_widgets.dart';
 
 void main() {
   runApp(const MaApp());
@@ -38,13 +40,25 @@ class MaApp extends StatelessWidget {
         cardTheme: CardThemeData(
           color: Colors.white,
           elevation: 0,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         ),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
           fillColor: Colors.white,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE4E7EC))),
-          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE4E7EC))),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+        ),
+        navigationBarTheme: NavigationBarThemeData(
+          backgroundColor: const Color(0xFFEAF1F8),
+          indicatorColor: const Color(0xFFDCE9FD),
+          labelTextStyle: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) return const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF173A6B));
+            return const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF64748B));
+          }),
+          iconTheme: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) return const IconThemeData(color: Color(0xFF173A6B), size: 24);
+            return const IconThemeData(color: Color(0xFF64748B), size: 24);
+          }),
         ),
         filledButtonTheme: FilledButtonThemeData(
           style: FilledButton.styleFrom(
@@ -64,10 +78,9 @@ Widget reyeeCard({required Widget child, EdgeInsets padding = const EdgeInsets.a
   return Container(
     margin: const EdgeInsets.only(bottom: 12),
     decoration: BoxDecoration(
-      color: Colors.white.withValues(alpha: 0.96),
-      border: Border.all(color: const Color(0xFFDCE7F2)),
-      borderRadius: BorderRadius.circular(26),
-      boxShadow: const [BoxShadow(color: Color(0x140F172A), blurRadius: 18, offset: Offset(0, 6))],
+      color: Colors.white,
+      border: Border.all(color: const Color(0xFFE2E8F0)),
+      borderRadius: BorderRadius.circular(24),
     ),
     child: Padding(padding: padding, child: child),
   );
@@ -76,7 +89,7 @@ Widget reyeeCard({required Widget child, EdgeInsets padding = const EdgeInsets.a
 Widget sectionTitle(String title) {
   return Padding(
     padding: const EdgeInsets.fromLTRB(4, 12, 4, 8),
-    child: Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: reyeeInk)),
+    child: Text(title.toUpperCase(), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, letterSpacing: 0.4, color: reyeeMuted)),
   );
 }
 
@@ -291,7 +304,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: const Icon(Icons.router_outlined, color: Colors.white, size: 38),
               ),
               const SizedBox(height: 20),
-              const Text('MA3063 Control', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: reyeeInk)),
+              const Text('MA3063 Control', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w700, color: reyeeInk)),
               const Text('Ruijie RG-MA3063, directly. No cloud account.', style: TextStyle(color: reyeeMuted, fontSize: 15)),
               const SizedBox(height: 24),
               errorBanner(_error),
@@ -474,51 +487,26 @@ class _MainShellState extends State<MainShell> {
       ToolsScreen(api: widget.api, onSessionExpired: _sessionExpired),
       SettingsScreen(api: widget.api, routerIp: widget.routerIp, onSessionExpired: _sessionExpired),
     ];
-    const titles = ['Home', 'Devices', 'WiFi', 'Tools', 'Settings'];
     return Scaffold(
-      appBar: AppBar(title: Text('MA3063 · ${titles[_index]}')),
+      appBar: AppBar(title: const Text('MA3063 Control')),
       body: IndexedStack(index: _index, children: screens),
-      bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-          child: Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border.all(color: const Color(0xFFDCE7F2)),
-              borderRadius: BorderRadius.circular(999),
-              boxShadow: const [BoxShadow(color: Color(0x140F172A), blurRadius: 18, offset: Offset(0, 6))],
-            ),
-            child: Row(
-              children: [
-                for (var i = 0; i < titles.length; i++)
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => setState(() => _index = i),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        decoration: BoxDecoration(
-                          color: _index == i ? reyeeBlue : Colors.transparent,
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              [Icons.home_outlined, Icons.devices_outlined, Icons.wifi, Icons.health_and_safety_outlined, Icons.settings_outlined][i],
-                              size: 20,
-                              color: _index == i ? Colors.white : reyeeMuted,
-                            ),
-                            const SizedBox(height: 2),
-                            Text(titles[i], style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: _index == i ? Colors.white : reyeeMuted)),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
+      bottomNavigationBar: Container(
+        decoration: const BoxDecoration(
+          color: Color(0xFFEAF1F8),
+          border: Border(top: BorderSide(color: Color(0xFFE2E8F0))),
+        ),
+        child: NavigationBar(
+          backgroundColor: const Color(0xFFEAF1F8),
+          indicatorColor: const Color(0xFFDCE9FD),
+          selectedIndex: _index,
+          onDestinationSelected: (i) => setState(() => _index = i),
+          destinations: const [
+            NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Home'),
+            NavigationDestination(icon: Icon(Icons.devices_outlined), selectedIcon: Icon(Icons.devices), label: 'Devices'),
+            NavigationDestination(icon: Icon(Icons.wifi_outlined), selectedIcon: Icon(Icons.wifi), label: 'WiFi'),
+            NavigationDestination(icon: Icon(Icons.health_and_safety_outlined), selectedIcon: Icon(Icons.health_and_safety), label: 'Tools'),
+            NavigationDestination(icon: Icon(Icons.settings_outlined), selectedIcon: Icon(Icons.settings), label: 'Settings'),
+          ],
         ),
       ),
     );
@@ -612,7 +600,7 @@ class _HomeScreenState extends State<HomeScreen> {
         if (lan is Map) lanMap = lan;
         if (wanMap != null) {
           if (wanMap['ipaddr'] != null) _wanIp = str(wanMap['ipaddr']);
-          if (wanMap['proto'] != null) _wanProto = str(wanMap['proto']).toUpperCase();
+          if (wanMap['proto'] != null) _wanProto = wanProtoLabel(wanMap['proto']);
         }
         if (lanMap != null && lanMap['ipaddr'] != null) _lanIp = str(lanMap['ipaddr']);
         if (_wanIp == '-' && d['wanIp'] != null) _wanIp = str(d['wanIp']);
@@ -625,7 +613,7 @@ class _HomeScreenState extends State<HomeScreen> {
       if (d is Map && d['wan'] is Map) {
         final w = d['wan'] as Map;
         if (w['ip'] != null) _wanIp = str(w['ip']);
-        if (w['proto'] != null) _wanProto = str(w['proto']).toUpperCase();
+        if (w['proto'] != null) _wanProto = wanProtoLabel(w['proto']);
       }
     } catch (_) {}
     try {
@@ -708,7 +696,7 @@ class _HomeScreenState extends State<HomeScreen> {
       final cache = await LocalStore.homeCache();
       if (cache.$1 != null) {
         _stale = true;
-        _staleTime = cache.$2 == null ? '' : DateTime.fromMillisecondsSinceEpoch(cache.$2!).toString();
+        _staleTime = cache.$2 == null ? '' : formatDisplayDateTimeMs(cache.$2!);
         final c = cache.$1!;
         if (c['hostname'] != null) _hostname = c['hostname'].toString();
         if (c['wanIp'] != null) _wanIp = c['wanIp'].toString();
@@ -823,7 +811,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(_hostname, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white)),
+                              Text(_hostname, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white)),
                               Text('$_model', style: const TextStyle(color: Colors.white70)),
                             ],
                           ),
@@ -836,7 +824,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ],
                     ),
                     const SizedBox(height: 16),
-                    Text(_clientCount, style: const TextStyle(fontSize: 40, fontWeight: FontWeight.w800, color: Colors.white, fontFeatures: [FontFeature.tabularFigures()])),
+                    Text(_clientCount, style: const TextStyle(fontSize: 40, fontWeight: FontWeight.w700, color: Colors.white, fontFeatures: [FontFeature.tabularFigures()])),
                     const Text('devices online', style: TextStyle(color: Colors.white70)),
                     const SizedBox(height: 12),
                     Text('WAN $_wanIp · $_wanProto', style: const TextStyle(color: Colors.white)),
@@ -853,7 +841,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Column(
                     children: [
                       RingGauge(value: double.tryParse(_cpu.replaceAll('%', '')) ?? 0, label: 'CPU usage'),
-                      Text(_cpu, style: const TextStyle(fontWeight: FontWeight.w800, fontFeatures: [FontFeature.tabularFigures()])),
+                      Text(_cpu, style: const TextStyle(fontWeight: FontWeight.w700, fontFeatures: [FontFeature.tabularFigures()])),
                     ],
                   ),
                 ),
@@ -864,7 +852,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Column(
                     children: [
                       RingGauge(value: double.tryParse(_mem.replaceAll('%', '')) ?? 0, label: 'Memory', color: reyeeCyan),
-                      Text(_mem, style: const TextStyle(fontWeight: FontWeight.w800, fontFeatures: [FontFeature.tabularFigures()])),
+                      Text(_mem, style: const TextStyle(fontWeight: FontWeight.w700, fontFeatures: [FontFeature.tabularFigures()])),
                     ],
                   ),
                 ),
@@ -894,7 +882,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       Icon(Icons.router_outlined, color: reyeeBlue),
                       SizedBox(width: 8),
-                      Expanded(child: Text('Main router', style: TextStyle(fontWeight: FontWeight.w800))),
+                      Expanded(child: Text('Main router', style: TextStyle(fontWeight: FontWeight.w700))),
                     ],
                   ),
                   const SizedBox(height: 8),
@@ -929,7 +917,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 child: Row(
                   children: [
-                    Expanded(child: Text('${r['type']} · Channel ${r['channel']} · ${r['width']}', style: const TextStyle(fontWeight: FontWeight.w600))),
+                    Expanded(child: Text('${radioTypeLabel(r['type'], null)} · ${channelLabel(r['channel'] ?? 'auto', is5g: (r['type'] ?? '').toString().contains('5'))} · ${bandwidthLabel(r['width'] ?? 'auto', is5g: (r['type'] ?? '').toString().contains('5'))}', style: const TextStyle(fontWeight: FontWeight.w600))),
                     Text(r['on'] ?? '-', style: const TextStyle(color: reyeeMuted)),
                   ],
                 ),
@@ -991,7 +979,7 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           Icon(icon, color: reyeeBlue, size: 20),
           const SizedBox(height: 8),
-          Text(value, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+          Text(value, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
           Text(label, style: const TextStyle(color: reyeeMuted, fontSize: 12)),
         ],
       ),
@@ -1127,29 +1115,36 @@ class _DevicesScreenState extends State<DevicesScreen> {
       }
     } catch (_) {}
     if (!mounted) return;
+    var upMbps = int.tryParse(up.text) ?? 0;
+    var downMbps = int.tryParse(down.text) ?? 0;
     final save = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Bandwidth limit'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: up, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Upload (Mbps, 0 = no limit)')),
-            const SizedBox(height: 10),
-            TextField(controller: down, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Download (Mbps, 0 = no limit)')),
-            const SizedBox(height: 10),
-            const Text('The router stores this in Kbps. 10 Mbps is sent as 10000, proven by hardware test.', style: TextStyle(color: reyeeMuted, fontSize: 12)),
-          ],
-        ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setD) => AlertDialog(
+          title: const Text('Bandwidth limit'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Upload', style: TextStyle(fontWeight: FontWeight.w600)),
+                LimitSlider(mbps: upMbps, onChanged: (v) => setD(() => upMbps = v)),
+                const SizedBox(height: 16),
+                const Text('Download', style: TextStyle(fontWeight: FontWeight.w600)),
+                LimitSlider(mbps: downMbps, onChanged: (v) => setD(() => downMbps = v)),
+              ],
+            ),
+          ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
           FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Save')),
         ],
+        ),
       ),
     );
     if (save != true) return;
-    final upKbps = ((double.tryParse(up.text) ?? 0) * 1000).round();
-    final downKbps = ((double.tryParse(down.text) ?? 0) * 1000).round();
+    final upKbps = upMbps * 1000;
+    final downKbps = downMbps * 1000;
     try {
       await widget.api.post('/api/v1/lua/OnlineUsers/setStaItem', {'idx': idx, 'usbandwidth': upKbps, 'dsbandwidth': downKbps});
       await _load();
@@ -1227,12 +1222,12 @@ class _DevicesScreenState extends State<DevicesScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(_localName(c), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+              Text(_localName(c), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
               Text('IP ${str(c['ip'])} · MAC ${str(c['mac'])}', style: const TextStyle(color: reyeeMuted)),
               if (c['rssi'] != null) Text('Signal ${signalLabel(c['rssi'])}', style: const TextStyle(color: reyeeMuted)),
               if (c['ssid'] != null) Text('WiFi ${str(c['ssid'])}', style: const TextStyle(color: reyeeMuted)),
               const SizedBox(height: 6),
-              Text('Local history: first seen ${h['firstSeen'] is num ? DateTime.fromMillisecondsSinceEpoch((h['firstSeen'] as num).toInt()).toString() : '-'}, sessions ${str(h['sessions'], '0')}.', style: const TextStyle(color: reyeeMuted, fontSize: 12, height: 1.45)),
+              Text('Local history: first seen ${h['firstSeen'] is num ? formatDisplayDateTimeMs((h['firstSeen'] as num).toInt()) : '-'}, sessions ${str(h['sessions'], '0')}.', style: const TextStyle(color: reyeeMuted, fontSize: 12, height: 1.45)),
               const SizedBox(height: 12),
               TextField(controller: nameC, decoration: const InputDecoration(labelText: 'Local nickname (local only, not saved on the router)')),
               const SizedBox(height: 10),
@@ -1384,12 +1379,32 @@ class _WifiScreenState extends State<WifiScreen> {
                 ],
                 TextField(controller: name, decoration: const InputDecoration(labelText: 'Network name')),
                 const SizedBox(height: 10),
-                DropdownButtonFormField<String>(
-                  initialValue: enc,
-                  items: _encOptions.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-                  onChanged: (v) => setD(() => enc = v ?? enc),
-                  decoration: const InputDecoration(labelText: 'Encryption'),
-                ),
+                choiceRow('Encryption', Encryption.fromCode(enc).label, null, () async {
+                  final picked = await showDialog<String>(
+                    context: ctx,
+                    builder: (dc) => AlertDialog(
+                      title: const Text('Encryption'),
+                      content: SingleChildScrollView(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Standard', style: TextStyle(fontWeight: FontWeight.w700, color: reyeeMuted)),
+                            for (final e in [Encryption.open, Encryption.wpa2, Encryption.wpa2Wpa3, Encryption.wpa3])
+                              RadioListTile<String>(value: e.code, groupValue: enc, title: Text(e.label), onChanged: (v) => Navigator.pop(dc, v)),
+                            const SizedBox(height: 8),
+                            const Text('Legacy', style: TextStyle(fontWeight: FontWeight.w700, color: reyeeMuted)),
+                            const Text('Older devices only, less secure.', style: TextStyle(color: reyeeMuted, fontSize: 12)),
+                            for (final e in [Encryption.wpa, Encryption.wpaWpa2])
+                              RadioListTile<String>(value: e.code, groupValue: enc, title: Text(e.label), onChanged: (v) => Navigator.pop(dc, v)),
+                          ],
+                        ),
+                      ),
+                      actions: [TextButton(onPressed: () => Navigator.pop(dc), child: const Text('Cancel'))],
+                    ),
+                  );
+                  if (picked != null) setD(() => enc = picked);
+                }),
                 if (enc != 'open') ...[
                   const SizedBox(height: 10),
                   TextField(
@@ -1469,7 +1484,7 @@ class _WifiScreenState extends State<WifiScreen> {
         final savedName = str(after['ssidName'], '');
         final savedEnc = str(after['encryptionMode'], authToEncryption(after['auth']));
         if (savedName != name.text.trim() || savedEnc != enc) {
-          showMsg(context, 'Saved name is $savedName and encryption is $savedEnc, not what was sent. Please try again.');
+          showMsg(context, 'Saved name is $savedName and encryption is ${Encryption.fromCode(savedEnc).label}, not what was sent. Please try again.');
           return;
         }
       }
@@ -1503,7 +1518,7 @@ class _WifiScreenState extends State<WifiScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(str(s['ssidName'], 'Unnamed'), style: const TextStyle(fontWeight: FontWeight.w700)),
-                          Text('Radio ${str(s['relatedRadio'])} · ${str(s['encryptionMode'], authToEncryption(s['auth']))} · ${(s['enable'] == 'yes' || s['enable'] == 'true') ? 'On' : 'Off'}', style: const TextStyle(color: reyeeMuted, fontSize: 12)),
+                          Text('${radioBandLabel(s['relatedRadio'])} · ${Encryption.fromCode(str(s['encryptionMode'], authToEncryption(s['auth']))).label} · ${(s['enable'] == 'yes' || s['enable'] == 'true') ? 'On' : 'Off'}', style: const TextStyle(color: reyeeMuted, fontSize: 12)),
                         ],
                       ),
                     ),
@@ -1511,7 +1526,6 @@ class _WifiScreenState extends State<WifiScreen> {
                   ],
                 ),
               ),
-          const Text('Changing WiFi here uses the same stock endpoint and payload as the web panel, including the numeric groupId rule.', style: TextStyle(color: reyeeMuted), textAlign: TextAlign.center),
         ],
       ),
     );
@@ -1533,6 +1547,7 @@ class _ToolsScreenState extends State<ToolsScreen> {
   bool _diagRunning = false;
   String _checkResult = '';
   String _diagOutput = '';
+  String _diagSummary = '';
   final _diagTarget = TextEditingController(text: 'www.google.com');
   String _diagMethod = 'ping';
   String? _error;
@@ -1573,7 +1588,7 @@ class _ToolsScreenState extends State<ToolsScreen> {
           }
           var ok = errCode == 0 || errCode == '0';
           if (!wanHasIp && (item.$1 == 'ip_status' || item.$1 == 'dns_status')) ok = false;
-          lines.add('${item.$2}: ${ok ? 'Passed' : 'Failed'}${errCode == null ? '' : ' (code $errCode)'}');
+          lines.add('${item.$2}: ${ok ? 'Passed' : 'Failed'}');
         } catch (e) {
           lines.add('${item.$2}: Error (${e is ApiException ? e.message : 'failed'})');
         }
@@ -1633,13 +1648,13 @@ class _ToolsScreenState extends State<ToolsScreen> {
       });
       final d = dataOf(res);
       if (d is Map && d['res'] != null) {
-        setState(() => _diagOutput = d['res'].toString());
+        setState(() { _diagOutput = d['res'].toString(); _diagSummary = '${_diagMethod == 'ping' ? 'Ping' : 'DNS lookup'} to $target finished. The raw tool output follows.'; });
       } else {
         await Future.delayed(const Duration(milliseconds: 2500));
         if (!mounted) return;
         final out = await widget.api.get('/api/v1/lua/Diagnose/getDiagnoseRes');
         final od = dataOf(out);
-        if (od is Map && od['res'] != null) setState(() => _diagOutput = od['res'].toString());
+        if (od is Map && od['res'] != null) setState(() { _diagOutput = od['res'].toString(); _diagSummary = '${_diagMethod == 'ping' ? 'Ping' : 'DNS lookup'} to $target finished. The raw tool output follows.'; });
       }
     } on SessionExpiredException {
       widget.onSessionExpired();
@@ -1667,7 +1682,7 @@ class _ToolsScreenState extends State<ToolsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Checks WAN port, WAN IP, DNS, internet and LAN. A result is only counted as passed when errorcode or ret is 0, not just when the call returns.', style: TextStyle(color: reyeeMuted, height: 1.4)),
+              const Text('Checks WAN port, WAN IP, DNS, internet and LAN. A result only counts as passed when the router confirms it, not just when the call returns.', style: TextStyle(color: reyeeMuted, height: 1.4)),
               const SizedBox(height: 12),
               FilledButton(onPressed: _checking ? null : _runCheck, child: Text(_checking ? 'Checking...' : 'Run network check')),
               const SizedBox(height: 10),
@@ -1696,6 +1711,10 @@ class _ToolsScreenState extends State<ToolsScreen> {
               TextField(controller: _diagTarget, decoration: const InputDecoration(labelText: 'Target')),
               const SizedBox(height: 12),
               FilledButton(onPressed: _diagRunning ? null : _runDiagnose, child: Text(_diagRunning ? 'Running...' : 'Run diagnose')),
+              if (_diagSummary.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Text(_diagSummary, style: const TextStyle(height: 1.45)),
+              ],
               if (_diagOutput.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 Container(
@@ -1733,6 +1752,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String _dnsInfo = '-';
   String _led = '-';
   String _ipv6 = '-';
+  String _connector = 'Not installed';
   List<Map<String, dynamic>> _ports = [];
   List<Map<String, dynamic>> _logs = [];
 
@@ -1759,8 +1779,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
         if (wan is Map) wm = wan;
         if (lan is List && lan.isNotEmpty) lm = lan.first as Map?;
         if (lan is Map) lm = lan;
-        _wanInfo = wm == null ? '-' : '${str(wm['proto'], '').toUpperCase()} · ${str(wm['ipaddr'])}';
-        _lanInfo = lm == null ? '-' : '${str(lm['ipaddr'])} / ${str(lm['netmask'])} · DHCP ${str(lm['enblDhcpSrv'])}';
+        _wanInfo = wm == null ? '-' : '${wanProtoLabel(wm['proto'])} · ${str(wm['ipaddr'])}';
+        final dhcpState = () {
+          if (lm == null) return 'DHCP status unknown';
+          final f = str(lm['enblDhcpSrv'], '').toLowerCase();
+          if (f == 'yes' || f == '1' || f == 'true') return 'DHCP on';
+          if (f == 'no' || f == '0' || f == 'false') return 'DHCP off';
+          return 'DHCP status unknown';
+        }();
+        _lanInfo = lm == null ? '-' : '${str(lm['ipaddr'])} / ${str(lm['netmask'])} · $dhcpState';
       }
     } catch (_) {}
     try {
@@ -1787,7 +1814,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     try {
       final v = await widget.api.get('/api/v1/lua/InternetProtocolVersionSix/GetIPv6Status');
       final d = dataOf(v);
-      if (d is Map && d['mode'] != null) _ipv6 = 'Mode ${str(d['mode'])}';
+      if (d is Map && d['mode'] != null) _ipv6 = Ipv6Mode.fromCode(d['mode']).label;
     } catch (_) {}
     try {
       final p = await widget.api.post('/api/v1/lua/PortMap/getPortMapping', {'page': 1, 'size': 20});
@@ -1803,6 +1830,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
       _ports = list.whereType<Map>().map((m) => Map<String, dynamic>.from(m)).toList();
     } catch (_) {}
+    try {
+      final cg = await widget.api.get('/api/maapp.lua?action=ping');
+      final cd = dataOf(cg);
+      _connector = (cd is Map && cd['connector'] == 'maapp') ? 'Installed' : 'Not installed';
+    } catch (_) {
+      _connector = 'Not installed';
+    }
     try {
       final lg = await widget.api.get('/api/v1/lua/Log/syslog');
       final d = dataOf(lg);
@@ -1907,7 +1941,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _ledToggle() async {
-    final next = _led == 'on' ? 'off' : 'on';
+    final next = _led == 'close' ? 'restore' : 'close';
     var savedList = <dynamic>[];
     try {
       final led = await widget.api.get('/api/v1/lua/LED/devLed');
@@ -1917,7 +1951,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     try {
       await widget.api.post('/api/v1/lua/LED/setLed', {'led_all': next, 'LedConfigList': savedList});
       await _load();
-      showMsg(context, 'LED set to $next.');
+      showMsg(context, 'LED set to ${LedMode.fromCode(next).label}.');
     } on SessionExpiredException {
       widget.onSessionExpired();
     } catch (e) {
@@ -1991,14 +2025,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
               children: [
                 ListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Advanced router settings', style: TextStyle(fontWeight: FontWeight.w800)),
+                  title: const Text('Advanced router settings', style: TextStyle(fontWeight: FontWeight.w700)),
                   subtitle: const Text('Parental control, radio, mesh, network, IPv6, system, MAC filter, IPTV', style: TextStyle(color: reyeeMuted)),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => AdvancedScreen(api: widget.api, onSessionExpired: widget.onSessionExpired))),
                 ),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Local insights', style: TextStyle(fontWeight: FontWeight.w800)),
+                  title: const Text('Local insights', style: TextStyle(fontWeight: FontWeight.w700)),
                   subtitle: const Text('Charts, device history, phone speed test, local alerts, weekly report, offline cache', style: TextStyle(color: reyeeMuted)),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => LocalScreen(api: widget.api, onSessionExpired: widget.onSessionExpired))),
@@ -2045,11 +2079,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
           reyeeCard(
             child: Column(
               children: [
-                infoRow('LED', _led),
+                infoRow('LED', LedMode.fromCode(_led).label),
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    Expanded(child: OutlinedButton(onPressed: _ledToggle, child: Text(_led == 'on' ? 'Turn LED off' : 'Turn LED on'))),
+                    Expanded(child: OutlinedButton(onPressed: _ledToggle, child: Text(_led == 'close' ? 'Turn LED on' : 'Turn LED off'))),
                     const SizedBox(width: 10),
                     Expanded(child: OutlinedButton(onPressed: _reboot, child: const Text('Restart router'))),
                   ],
@@ -2066,14 +2100,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
             for (final l in _logs.take(10))
               reyeeCard(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                child: Text(str(l['msg'] ?? l['content'] ?? l.toString()), style: const TextStyle(fontSize: 12, height: 1.4)),
+                child: Text(() { final t = (l['msg'] ?? l['content'])?.toString(); return (t != null && t.isNotEmpty) ? t : 'Log entry'; }(), style: const TextStyle(fontSize: 12, height: 1.4)),
               ),
           sectionTitle('Session'),
           reyeeCard(
             child: Column(
               children: [
                 infoRow('Router IP', widget.routerIp),
-                infoRow('Connector', 'Bundled maapp.lua, see final delivery notes'),
+                infoRow('Connector', _connector),
                 const SizedBox(height: 10),
                 FilledButton(onPressed: _logout, child: const Text('Log out')),
               ],

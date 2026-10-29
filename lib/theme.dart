@@ -9,6 +9,13 @@ const Color appMuted = Color(0xFF64748B);
 const Color appBg = Color(0xFFEDF3FA);
 const Color appCard = Color(0xFFFFFFFF);
 const Color appBorder = Color(0xFFDCE7F2);
+const Color appSurfaceLow = Color(0xFFF7FAFD);
+const Color appSurfaceContainer = Color(0xFFEAF1F8);
+const Color appSurfaceHigh = Color(0xFFE2EBF5);
+const Color appSecondaryContainer = Color(0xFFDCE9FD);
+const Color appOnSecondary = Color(0xFF173A6B);
+const Color appOutline = Color(0xFFCBD5E1);
+const Color appOutlineVariant = Color(0xFFE2E8F0);
 const Color appGreen = Color(0xFF15803D);
 const Color appGreenBg = Color(0xFFDCFCE7);
 const Color appAmber = Color(0xFFB45309);
@@ -16,8 +23,8 @@ const Color appAmberBg = Color(0xFFFEF3C7);
 const Color appRed = Color(0xFFB42318);
 const Color appRedBg = Color(0xFFFEECEB);
 
-/// White glass card: white fill, light border, thin top highlight via
-/// a soft shadow. Radius 24 to 28 per the design brief.
+/// Content card: white at full opacity, hairline border, no shadow.
+/// Depth comes from the page background versus the white card.
 class GlassCard extends StatelessWidget {
   const GlassCard({super.key, required this.child, this.padding = const EdgeInsets.all(16), this.margin = const EdgeInsets.only(bottom: 12)});
   final Widget child;
@@ -28,10 +35,9 @@ class GlassCard extends StatelessWidget {
     return Container(
       margin: margin,
       decoration: BoxDecoration(
-        color: appCard.withValues(alpha: 0.96),
-        border: Border.all(color: appBorder),
-        borderRadius: BorderRadius.circular(26),
-        boxShadow: const [BoxShadow(color: Color(0x140F172A), blurRadius: 18, offset: Offset(0, 6))],
+        color: appCard,
+        border: Border.all(color: appOutlineVariant),
+        borderRadius: BorderRadius.circular(24),
       ),
       child: Padding(padding: padding, child: child),
     );
@@ -66,7 +72,7 @@ class SegmentedControl<T> extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(color: const Color(0xFFE6EEF7), borderRadius: BorderRadius.circular(999)),
+      decoration: BoxDecoration(color: appSurfaceContainer, borderRadius: BorderRadius.circular(999)),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -76,13 +82,13 @@ class SegmentedControl<T> extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 decoration: BoxDecoration(
-                  color: opt.$1 == value ? appBlue : Colors.transparent,
+                  color: opt.$1 == value ? appSecondaryContainer : Colors.transparent,
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
                   opt.$2,
                   style: TextStyle(
-                    color: opt.$1 == value ? Colors.white : appMuted,
+                    color: opt.$1 == value ? appOnSecondary : appMuted,
                     fontWeight: FontWeight.w700,
                     fontSize: 13,
                   ),
@@ -154,7 +160,7 @@ Widget emptyState(String title, String body, String actionLabel, VoidCallback on
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: appInk)),
+        Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: appInk)),
         const SizedBox(height: 6),
         Text(body, style: const TextStyle(color: appMuted, height: 1.45)),
         const SizedBox(height: 12),
@@ -187,7 +193,7 @@ class RingGauge extends StatelessWidget {
               child: Center(
                 child: Text(
                   '${v.round()}%',
-                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: appInk, fontFeatures: [FontFeature.tabularFigures()]),
+                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: appInk, fontFeatures: [FontFeature.tabularFigures()]),
                 ),
               ),
             ),

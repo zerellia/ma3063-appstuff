@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'api.dart';
 import 'theme.dart';
+import 'labels.dart';
 import 'local_store.dart';
 import 'speed_test.dart';
 
@@ -70,7 +71,7 @@ class _LocalScreenState extends State<LocalScreen> {
 
   String _time(dynamic ms) {
     if (ms is! num) return '-';
-    return DateTime.fromMillisecondsSinceEpoch(ms.toInt()).toString();
+    return formatDisplayDateTimeMs(ms.toInt());
   }
 
   @override
@@ -92,7 +93,7 @@ class _LocalScreenState extends State<LocalScreen> {
           if (_loading) skeletonCard(),
           const Padding(
             padding: EdgeInsets.fromLTRB(4, 12, 4, 8),
-            child: Text('Health charts, sampled while the app is open', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: appInk)),
+            child: Text('Health charts, sampled while the app is open', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: appInk)),
           ),
           GlassCard(
             child: Column(
@@ -116,7 +117,7 @@ class _LocalScreenState extends State<LocalScreen> {
           ),
           const Padding(
             padding: EdgeInsets.fromLTRB(4, 12, 4, 8),
-            child: Text('Phone speed test', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: appInk)),
+            child: Text('Phone speed test', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: appInk)),
           ),
           GlassCard(
             child: Column(
@@ -131,7 +132,7 @@ class _LocalScreenState extends State<LocalScreen> {
           ),
           const Padding(
             padding: EdgeInsets.fromLTRB(4, 12, 4, 8),
-            child: Text('Device history, local only', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: appInk)),
+            child: Text('Device history, local only', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: appInk)),
           ),
           if (_history.isEmpty)
             emptyState('No device history yet', 'History is recorded when the Devices page loads. Open Devices, then come back here.', 'Refresh', _load)
@@ -141,7 +142,7 @@ class _LocalScreenState extends State<LocalScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(str((e.value is Map ? e.value as Map : {})['name'], e.key), style: const TextStyle(fontWeight: FontWeight.w800)),
+                    Text(str((e.value is Map ? e.value as Map : {})['name'], e.key), style: const TextStyle(fontWeight: FontWeight.w700)),
                     Text(e.key, style: const TextStyle(color: appMuted, fontSize: 12)),
                     Text('First seen: ${_time((e.value is Map ? e.value as Map : {})['firstSeen'])}', style: const TextStyle(color: appMuted, fontSize: 12)),
                     Text('Last seen: ${_time((e.value is Map ? e.value as Map : {})['lastSeen'])}', style: const TextStyle(color: appMuted, fontSize: 12)),
@@ -151,7 +152,7 @@ class _LocalScreenState extends State<LocalScreen> {
               ),
           const Padding(
             padding: EdgeInsets.fromLTRB(4, 12, 4, 8),
-            child: Text('Local alerts', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: appInk)),
+            child: Text('Local alerts', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: appInk)),
           ),
           if (_alerts.isEmpty)
             const GlassCard(child: Text('No local alerts yet. Alerts are created only from values this app has actually observed, for example a new device or a high CPU or temperature reading.', style: TextStyle(color: appMuted, height: 1.45)))
@@ -160,12 +161,12 @@ class _LocalScreenState extends State<LocalScreen> {
               GlassCard(child: Text('${_time(a['t'])}: ${str(a['text'])}', style: const TextStyle(height: 1.45))),
           const Padding(
             padding: EdgeInsets.fromLTRB(4, 12, 4, 8),
-            child: Text('Weekly report, local only', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: appInk)),
+            child: Text('Weekly report, local only', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: appInk)),
           ),
           GlassCard(child: Text(_report.isEmpty ? 'No report yet.' : _report, style: const TextStyle(height: 1.5))),
           const Padding(
             padding: EdgeInsets.fromLTRB(4, 12, 4, 8),
-            child: Text('Offline cache', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: appInk)),
+            child: Text('Offline cache', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: appInk)),
           ),
           GlassCard(
             child: Text(

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'api.dart';
 import 'theme.dart';
 import 'advanced.dart';
+import 'labels.dart';
+import 'choice_widgets.dart';
 
 class AdvancedScreen extends StatelessWidget {
   const AdvancedScreen({super.key, required this.api, required this.onSessionExpired});
@@ -34,7 +36,7 @@ class AdvancedScreen extends StatelessWidget {
             GlassCard(
               child: ListTile(
                 contentPadding: EdgeInsets.zero,
-                title: Text(item.$1, style: const TextStyle(fontWeight: FontWeight.w800)),
+                title: Text(item.$1, style: const TextStyle(fontWeight: FontWeight.w700)),
                 subtitle: Text(item.$2, style: const TextStyle(color: appMuted)),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => item.$3)),
@@ -72,7 +74,7 @@ class _NetworkScreenState extends State<NetworkScreen> {
   bool _upnp = false;
   String _wps = '-';
   String _detect = '';
-  final _proto = TextEditingController(text: 'dhcp');
+  String _wanType = 'dhcp';
   final _mtu = TextEditingController(text: '1500');
   final _pppoeUser = TextEditingController();
   final _pppoePass = TextEditingController();
@@ -93,7 +95,6 @@ class _NetworkScreenState extends State<NetworkScreen> {
     _dns1.dispose();
     _dns2.dispose();
     _dmz.dispose();
-    _proto.dispose();
     _mtu.dispose();
     _pppoeUser.dispose();
     _pppoePass.dispose();
@@ -138,9 +139,9 @@ class _NetworkScreenState extends State<NetworkScreen> {
       final dd = dataOf(w);
       if (dd is Map && dd['wan'] is Map) {
         final wan = dd['wan'] as Map;
-        _wanStatus = '${str(wan['proto'], '-').toUpperCase()} · ${str(wan['ip'], '-')}';
+        _wanStatus = '${wanProtoLabel(wan['proto'])} · ${str(wan['ip'], '-')}';
         final proto = str(wan['proto'], '').toLowerCase();
-        _proto.text = proto.contains('pppoe') ? 'pppoe' : (proto.contains('static') ? 'static' : 'dhcp');
+        _wanType = proto.contains('pppoe') ? 'pppoe' : (proto.contains('static') ? 'static' : 'dhcp');
       }
     } catch (_) {}
     if (mounted) setState(() => _loading = false);
@@ -191,7 +192,7 @@ class _NetworkScreenState extends State<NetworkScreen> {
     try {
       await widget.api.post('/api/v1/lua/Wps/SetWpsInfo', {'wpsswitch': state});
       await _load();
-      advShowMsg(context, 'WPS set to $state and reloaded.');
+      advShowMsg(context, 'WPS is now ${state == 'on' ? 'On' : 'Off'}.');
     } on SessionExpiredException {
       widget.onSessionExpired();
     } catch (e) {
@@ -201,7 +202,7 @@ class _NetworkScreenState extends State<NetworkScreen> {
 
   Future<void> _saveWan() async {
     final form = {
-      'proto': _proto.text.trim(),
+      'proto': _wanType,
       'mtu': _mtu.text.trim(),
       'pppoeUser': _pppoeUser.text.trim(),
       'pppoePass': _pppoePass.text.trim(),
@@ -210,7 +211,7 @@ class _NetworkScreenState extends State<NetworkScreen> {
       'gateway': _wanGw.text.trim(),
       'dns': _wanDns.text.trim(),
     };
-    final ok = await advConfirm(context, 'Change WAN', 'Apply WAN type ${form['proto']}? The internet connection will restart.');
+    final ok = await advConfirm(context, 'Change WAN', 'Apply ${WanType.fromCode(form['proto']).label}? The internet connection will restart.');
     if (!ok) return;
     try {
       await widget.api.post('/api/v1/lua/network/wansetPlain', form);
@@ -229,10 +230,45 @@ class _NetworkScreenState extends State<NetworkScreen> {
     try {
       final res = await widget.api.post('/api/v1/lua/network/getWandetect', {});
       final d = dataOf(res);
-      setState(() => _detect = d.toString());
+      String human;
+      if (d is Map) {
+        final t = d['type'] ?? d['proto'] ?? d['wanType'] ?? d['result'] ?? d['status'];
+        if (t != null && t.toString().isNotEmpty) {
+          final wt = WanType.fromCode(t);
+          human = wt == WanType.custom ? 'Detected: ${t.toString()}' : 'Detected: ${wt.label}';
+        } else {
+          human = 'Detection finished, but the router did not name a connection type. Check the WAN cable and settings.';
+        }
+      } else if (d is String && d.isNotEmpty) {
+        human = 'Detected: $d';
+      } else {
+        human = 'Detection finished, but the router did not name a connection type. Check the WAN cable and settings.';
+      }
+      setState(() => _detect = human);
       await _load();
     } catch (e) {
       setState(() => _detect = e is ApiException ? 'Detect did not return a result: ${e.message}' : 'Detect did not return a result.');
+    }
+  }
+
+  Future<void> _pickDmzDevice() async {
+    try {
+      final res = await widget.api.post('/api/v1/lua/OnlineUsers/sta_list', {'page': 1, 'size': 100});
+      final list = listOf(dataOf(res) is Map ? (dataOf(res) as Map)['list'] : const []);
+      final opts = <(String, String, String?)>[];
+      for (final m in list.whereType<Map>()) {
+        final ip = str(m['ip'], '');
+        if (ip.isEmpty) continue;
+        opts.add((ip, str(m['hostName'] ?? m['deviceName'], 'Unknown device'), 'IP $ip'));
+      }
+      if (opts.isEmpty) {
+        advShowMsg(context, 'No online devices to pick from.');
+        return;
+      }
+      final picked = await showChoiceSheet<String>(context, title: 'Pick a device for DMZ', options: opts, current: _dmz.text.trim());
+      if (picked != null) setState(() => _dmz.text = picked);
+    } catch (e) {
+      advShowMsg(context, e is ApiException ? e.message : 'Failed to load devices.');
     }
   }
 
@@ -251,6 +287,16 @@ class _NetworkScreenState extends State<NetworkScreen> {
               children: [
                 advField(_dns1, 'Primary DNS'),
                 advField(_dns2, 'Secondary DNS'),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    FilterChip(label: const Text('Cloudflare'), selected: false, onSelected: (_) => setState(() { _dns1.text = '1.1.1.1'; _dns2.text = '1.0.0.1'; })),
+                    FilterChip(label: const Text('Google'), selected: false, onSelected: (_) => setState(() { _dns1.text = '8.8.8.8'; _dns2.text = '8.8.4.4'; })),
+                    FilterChip(label: const Text('Quad9'), selected: false, onSelected: (_) => setState(() { _dns1.text = '9.9.9.9'; _dns2.text = '149.112.112.112'; })),
+                  ],
+                ),
+                const SizedBox(height: 10),
                 FilledButton(onPressed: _saveDns, child: const Text('Save DNS')),
               ],
             ),
@@ -260,6 +306,7 @@ class _NetworkScreenState extends State<NetworkScreen> {
             child: Column(
               children: [
                 advField(_dmz, 'DMZ host IP (empty clears it)'),
+                OutlinedButton(onPressed: _pickDmzDevice, child: const Text('Pick a device')),
                 const Text('DMZ opens all ports to one device. Only use it for a device you trust.', style: TextStyle(color: appMuted, fontSize: 12, height: 1.45)),
                 const SizedBox(height: 10),
                 FilledButton(onPressed: _saveDmz, child: const Text('Save DMZ')),
@@ -273,7 +320,7 @@ class _NetworkScreenState extends State<NetworkScreen> {
                 SwitchListTile(value: _upnp, onChanged: (v) => setState(() => _upnp = v), title: const Text('UPnP')),
                 FilledButton(onPressed: _saveUpnp, child: const Text('Save UPnP')),
                 const SizedBox(height: 12),
-                Text('WPS: $_wps', style: const TextStyle(fontWeight: FontWeight.w700)),
+                Text('WPS: ${(() { final w = _wps.toLowerCase(); if (w == 'on' || w == '1' || w == 'true') return 'On'; if (w == 'off' || w == '0' || w == 'false') return 'Off'; return 'Unknown'; })()}', style: const TextStyle(fontWeight: FontWeight.w700)),
                 const SizedBox(height: 8),
                 Row(
                   children: [
@@ -291,14 +338,32 @@ class _NetworkScreenState extends State<NetworkScreen> {
               children: [
                 Text('Current: $_wanStatus', style: const TextStyle(fontWeight: FontWeight.w700)),
                 const SizedBox(height: 10),
-                advField(_proto, 'Type: dhcp, pppoe, or static'),
-                advField(_mtu, 'MTU', keyboardType: TextInputType.number),
-                advField(_pppoeUser, 'PPPoE username'),
-                advField(_pppoePass, 'PPPoE password'),
-                advField(_wanIp, 'Static IP'),
-                advField(_wanMask, 'Static netmask'),
-                advField(_wanGw, 'Static gateway'),
-                advField(_wanDns, 'Static DNS, space separated'),
+                SegmentedControl<WanType>(
+                  options: const [(WanType.dhcp, 'Automatic'), (WanType.pppoe, 'PPPoE'), (WanType.static, 'Static IP')],
+                  value: WanType.fromCode(_wanType),
+                  onChanged: (v) => setState(() => _wanType = v.code),
+                ),
+                Text(WanType.fromCode(_wanType).description, style: const TextStyle(color: appMuted, fontSize: 12)),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 6,
+                  children: [
+                    FilterChip(label: const Text('Auto (1500)'), selected: _mtu.text == '1500', onSelected: (_) => setState(() => _mtu.text = '1500')),
+                    FilterChip(label: const Text('1492 (PPPoE)'), selected: _mtu.text == '1492', onSelected: (_) => setState(() => _mtu.text = '1492')),
+                    FilterChip(label: const Text('1400'), selected: _mtu.text == '1400', onSelected: (_) => setState(() => _mtu.text = '1400')),
+                  ],
+                ),
+                advField(_mtu, 'MTU (usual default 1500)', keyboardType: TextInputType.number),
+                if (_wanType == 'pppoe') ...[
+                  advField(_pppoeUser, 'PPPoE username'),
+                  advField(_pppoePass, 'PPPoE password'),
+                ],
+                if (_wanType == 'static') ...[
+                  advField(_wanIp, 'Static IP'),
+                  advField(_wanMask, 'Static netmask'),
+                  advField(_wanGw, 'Static gateway'),
+                  advField(_wanDns, 'Static DNS, space separated'),
+                ],
                 FilledButton(onPressed: _saveWan, child: const Text('Save WAN')),
                 const SizedBox(height: 10),
                 OutlinedButton(onPressed: _detectWan, child: const Text('Detect WAN')),
@@ -324,6 +389,49 @@ class Ipv6Screen extends StatefulWidget {
 }
 
 class _Ipv6ScreenState extends State<Ipv6Screen> {
+  bool _isUnknownEntry(String key) {
+    final base = key.toLowerCase().replaceAll('wan6:', '').replaceAll('lan6:', '').replaceAll('_', '').trim();
+    const known = {'ip', 'ipaddr', 'prefix', 'prefixlen', 'gateway', 'dnsprimary', 'dns1', 'dnssecondary', 'dns2', 'staticaddr', 'ulaprefix', 'addrstart', 'addend', 'leasetime', 'dhcpv6server', 'radvd', 'mode', 'address', 'subnet'};
+    return !known.contains(base);
+  }
+
+  String _ipv6DisplayValue(String key, dynamic value) {
+    final v = value?.toString() ?? '';
+    if (isSensitiveKey(key)) return '••••••••';
+    final base = key.toLowerCase().replaceAll('wan6:', '').replaceAll('lan6:', '').replaceAll('_', '').trim();
+    if (base == 'mode') return Ipv6Mode.fromCode(v).label;
+    if (base == 'leasetime') {
+      for (final o in ipv6LeaseOptions) {
+        if (o.$1 == v) return o.$2;
+      }
+      return v.isEmpty ? 'Not set' : '$v seconds';
+    }
+    if (base == 'dhcpv6server') {
+      for (final o in ipv6DhcpOptions) {
+        if (o.$1 == v) return o.$2;
+      }
+    }
+    if (base == 'prefixlen') return v.isEmpty ? 'Not set' : '/$v';
+    return v.isEmpty ? 'Not set' : v;
+  }
+
+  List<(String, String, String?)> _opt2(List<(String, String)> xs) => [for (final x in xs) (x.$1, x.$2, null)];
+
+  Future<void> _pickOption(String title, List<(String, String, String?)> options, String current, void Function(String) onPick, {bool allowCustom = false}) async {
+    final opts = List<(String, String, String?)>.from(options);
+    if (!opts.any((o) => o.$1 == current) && current.isNotEmpty) opts.insert(0, (current, 'Custom setting', 'Tap to choose a standard option.'));
+    if (allowCustom) opts.add(('__custom__', 'Custom address', 'Type an address that is not in the list.'));
+    final picked = await showChoiceSheet<String>(context, title: title, options: opts, current: current);
+    if (picked == null) return;
+    if (picked == '__custom__') {
+      final c = TextEditingController();
+      final typed = await showDialog<String>(context: context, builder: (dc) => AlertDialog(title: Text(title), content: TextField(controller: c, decoration: const InputDecoration(labelText: 'Address')), actions: [TextButton(onPressed: () => Navigator.pop(dc), child: const Text('Cancel')), FilledButton(onPressed: () => Navigator.pop(dc, c.text.trim()), child: const Text('Use this'))]));
+      if (typed != null && typed.isNotEmpty) onPick(typed);
+      return;
+    }
+    onPick(picked);
+  }
+
   bool _loading = true;
   String? _error;
   String _mode = '';
@@ -434,8 +542,8 @@ class _Ipv6ScreenState extends State<Ipv6Screen> {
 
   Future<void> _saveMode() async {
     final mode = int.tryParse(_mode);
-    if (mode == null) {
-      advShowMsg(context, 'IPv6 mode must be a number as returned by the router.');
+    if (mode == null || Ipv6Mode.fromCode(_mode) == Ipv6Mode.custom) {
+      advShowMsg(context, 'Choose an IPv6 mode first.');
       return;
     }
     try {
@@ -446,7 +554,7 @@ class _Ipv6ScreenState extends State<Ipv6Screen> {
         'type': 'mode',
       });
       await _load();
-      advShowMsg(context, 'IPv6 mode saved and reloaded.');
+      advShowMsg(context, 'IPv6 mode is now ${Ipv6Mode.fromCode(_mode).label}.');
     } on SessionExpiredException {
       widget.onSessionExpired();
     } catch (e) {
@@ -514,9 +622,18 @@ class _Ipv6ScreenState extends State<Ipv6Screen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Mode: ${_mode.isEmpty ? '-' : _mode}', style: const TextStyle(fontWeight: FontWeight.w700)),
+                Text('Mode: ${Ipv6Mode.fromCode(_mode).label}', style: const TextStyle(fontWeight: FontWeight.w700)),
                 const SizedBox(height: 8),
-                for (final e in _entries.entries) Padding(padding: const EdgeInsets.only(bottom: 4), child: Text('${e.key}: ${e.value}', style: const TextStyle(color: appMuted, fontSize: 12))),
+                for (final e in _entries.entries.where((e) => !_isUnknownEntry(e.key.toString())))
+                  Padding(padding: const EdgeInsets.only(bottom: 4), child: Text('${ipv6EntryLabel(e.key.toString())}: ${_ipv6DisplayValue(e.key.toString(), e.value)}', style: const TextStyle(color: appMuted, fontSize: 12))),
+                if (_entries.entries.any((e) => _isUnknownEntry(e.key.toString())))
+                  ExpansionTile(
+                    title: const Text('More details'),
+                    children: [
+                      for (final e in _entries.entries.where((e) => _isUnknownEntry(e.key.toString())))
+                        Padding(padding: const EdgeInsets.only(bottom: 4), child: Text('${humaniseKey(e.key.toString())}: ${isSensitiveKey(e.key.toString()) ? '••••••••' : e.value}', style: const TextStyle(color: appMuted, fontSize: 12))),
+                    ],
+                  ),
                 if (_entries.isEmpty) const Text('No IPv6 network data returned.', style: TextStyle(color: appMuted)),
               ],
             ),
@@ -525,7 +642,15 @@ class _Ipv6ScreenState extends State<Ipv6Screen> {
           GlassCard(
             child: Column(
               children: [
-                TextField(controller: TextEditingController(text: _mode), onChanged: (v) => _mode = v, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Mode number')),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: SegmentedControl<Ipv6Mode>(
+                    options: const [(Ipv6Mode.v4Only, 'IPv4 only'), (Ipv6Mode.v6Only, 'IPv6 only'), (Ipv6Mode.dual, 'IPv4 and IPv6')],
+                    value: Ipv6Mode.fromCode(_mode),
+                    onChanged: (v) => setState(() => _mode = v.code),
+                  ),
+                ),
+                Text(Ipv6Mode.fromCode(_mode).description, style: const TextStyle(color: appMuted, fontSize: 12)),
                 const SizedBox(height: 10),
                 FilledButton(onPressed: _saveMode, child: const Text('Save mode')),
               ],
@@ -537,10 +662,10 @@ class _Ipv6ScreenState extends State<Ipv6Screen> {
               children: [
                 advField(_wanIp, 'WAN IPv6 address'),
                 advField(_wanPrefix, 'Prefix'),
-                advField(_wanPrefixLen, 'Prefix length'),
+                choiceRow('Prefix length', _wanPrefixLen.text.trim().isEmpty ? 'Keep current' : '/${_wanPrefixLen.text.trim()}', null, () => _pickOption('Prefix length', _opt2(ipv6PrefixOptions), _wanPrefixLen.text.trim(), (v) => setState(() => _wanPrefixLen.text = v))),
                 advField(_wanGw, 'Gateway'),
-                advField(_wanDns1, 'Primary DNS'),
-                advField(_wanDns2, 'Secondary DNS'),
+                choiceRow('Primary DNS', _wanDns1.text.trim().isEmpty ? 'Keep current' : _wanDns1.text.trim(), null, () => _pickOption('Primary DNS', _opt2(ipv6DnsOptions), _wanDns1.text.trim(), (v) => setState(() => _wanDns1.text = v), allowCustom: true)),
+                choiceRow('Secondary DNS', _wanDns2.text.trim().isEmpty ? 'Keep current' : _wanDns2.text.trim(), null, () => _pickOption('Secondary DNS', _opt2(ipv6DnsOptions), _wanDns2.text.trim(), (v) => setState(() => _wanDns2.text = v), allowCustom: true)),
                 FilledButton(onPressed: _saveWan, child: const Text('Save manual WAN')),
               ],
             ),
@@ -553,8 +678,8 @@ class _Ipv6ScreenState extends State<Ipv6Screen> {
                 advField(_lanUla, 'Local prefix'),
                 advField(_lanStart, 'Address start'),
                 advField(_lanEnd, 'Address end'),
-                advField(_lanLease, 'Lease time'),
-                advField(_lanDhcp, 'DHCPv6 server'),
+                choiceRow('Lease time', _lanLease.text.trim().isEmpty ? 'Keep current' : (ipv6LeaseOptions.where((o) => o.$1 == _lanLease.text.trim()).isEmpty ? '${_lanLease.text.trim()} seconds' : ipv6LeaseOptions.firstWhere((o) => o.$1 == _lanLease.text.trim()).$2), null, () => _pickOption('Lease time', _opt2(ipv6LeaseOptions), _lanLease.text.trim(), (v) => setState(() => _lanLease.text = v))),
+                choiceRow('DHCPv6 server', _lanDhcp.text.trim().isEmpty ? 'Keep current' : (ipv6DhcpOptions.where((o) => o.$1 == _lanDhcp.text.trim()).isEmpty ? _lanDhcp.text.trim() : ipv6DhcpOptions.firstWhere((o) => o.$1 == _lanDhcp.text.trim()).$2), null, () => _pickOption('DHCPv6 server', _opt2(ipv6DhcpOptions), _lanDhcp.text.trim(), (v) => setState(() => _lanDhcp.text = v))),
                 FilledButton(onPressed: _saveLan, child: const Text('Save manual LAN')),
               ],
             ),
@@ -580,15 +705,13 @@ class _SystemScreenState extends State<SystemScreen> {
   bool _loading = true;
   String? _error;
   final _hostname = TextEditingController();
-  final _tz = TextEditingController(text: 'GMT+7:00');
+  String _tzCode = 'GMT+7:00';
   String _routerTime = '-';
   String _tzName = '-';
   bool _rebootEnabled = false;
-  String _rebootDay = 'wed';
-  final _rebootHour = TextEditingController(text: '03');
-  final _rebootMinute = TextEditingController(text: '00');
-  bool _sessionEnabled = true;
-  final _sessionTime = TextEditingController(text: '300');
+  Set<String> _rebootDays = {'wed'};
+  TimeOfDay _rebootTime = const TimeOfDay(hour: 3, minute: 0);
+  int? _sessionMinutes = 5;
   bool _accSoftware = false;
   bool _accHardware = false;
   bool _accRadio1 = false;
@@ -608,10 +731,6 @@ class _SystemScreenState extends State<SystemScreen> {
   @override
   void dispose() {
     _hostname.dispose();
-    _tz.dispose();
-    _rebootHour.dispose();
-    _rebootMinute.dispose();
-    _sessionTime.dispose();
     super.dispose();
   }
 
@@ -629,14 +748,14 @@ class _SystemScreenState extends State<SystemScreen> {
       final t = await widget.api.get('/api/v1/lua/Time/asyncTime');
       final td = dataOf(t);
       final n = numOrNull(td is Map ? td['time'] ?? td : td);
-      if (n != null) _routerTime = DateTime.fromMillisecondsSinceEpoch(n.round() * 1000).toString();
+      if (n != null) _routerTime = formatDisplayDateTime(DateTime.fromMillisecondsSinceEpoch(n.round() * 1000));
     } catch (_) {}
     try {
       final tz = await widget.api.get('/api/v1/lua/Time/getTimezone');
       final td = dataOf(tz);
       if (td is Map) {
         _tzName = str(td['zonename'] ?? td['timezone'], '-');
-        if (td['timezone'] != null) _tz.text = str(td['timezone']);
+        if (td['timezone'] != null) _tzCode = str(td['timezone']);
       }
     } catch (_) {}
     try {
@@ -644,10 +763,11 @@ class _SystemScreenState extends State<SystemScreen> {
       final rd = dataOf(rb);
       if (rd is Map) {
         _rebootEnabled = rd['enable'] == '1' || rd['enable'] == 1;
-        if (rd['week'] is List && (rd['week'] as List).isNotEmpty) _rebootDay = (rd['week'] as List).first.toString();
+        if (rd['week'] is List && (rd['week'] as List).isNotEmpty) _rebootDays = (rd['week'] as List).map((e) => e.toString()).where((e) => _days.contains(e)).toSet();
         if (rd['time'] is List && (rd['time'] as List).length >= 2) {
-          _rebootHour.text = (rd['time'] as List)[0].toString();
-          _rebootMinute.text = (rd['time'] as List)[1].toString();
+          final h = int.tryParse((rd['time'] as List)[0].toString());
+          final m = int.tryParse((rd['time'] as List)[1].toString());
+          if (h != null && m != null) _rebootTime = TimeOfDay(hour: h.clamp(0, 23), minute: m.clamp(0, 59));
         }
       }
     } catch (_) {}
@@ -655,8 +775,11 @@ class _SystemScreenState extends State<SystemScreen> {
       final st = await widget.api.get('/api/v1/lua/userinfo/getSessiontime');
       final sd = dataOf(st);
       if (sd is Map) {
-        if (sd['enabled'] != null) _sessionEnabled = sd['enabled'] == true;
-        if (sd['sessiontime'] != null) _sessionTime.text = sd['sessiontime'].toString();
+        if (sd['enabled'] == false) {
+          _sessionMinutes = null;
+        } else if (sd['sessiontime'] != null) {
+          _sessionMinutes = (int.tryParse(sd['sessiontime'].toString()) ?? 300) ~/ 60;
+        }
       }
     } catch (_) {}
     try {
@@ -712,9 +835,9 @@ class _SystemScreenState extends State<SystemScreen> {
 
   Future<void> _saveTimezone() async {
     try {
-      await widget.api.post('/api/v1/lua/Time/setTimezone', {'timezone': _tz.text.trim()});
+      await widget.api.post('/api/v1/lua/Time/setTimezone', {'timezone': _tzCode});
       await _load();
-      advShowMsg(context, 'Timezone saved and reloaded.');
+      advShowMsg(context, 'Timezone saved: ${timezoneOptions.where((t) => t.$1 == _tzCode).isEmpty ? _tzCode : timezoneOptions.firstWhere((t) => t.$1 == _tzCode).$2}.');
     } on SessionExpiredException {
       widget.onSessionExpired();
     } catch (e) {
@@ -737,13 +860,14 @@ class _SystemScreenState extends State<SystemScreen> {
 
   Future<void> _saveReboot() async {
     try {
+      final daysOrdered = _days.where((d) => _rebootDays.contains(d)).toList();
       await widget.api.post('/api/v1/lua/SystemManage/setTimeReboot', {
         'enable': _rebootEnabled ? '1' : '0',
-        'week': [_rebootDay],
-        'time': [_rebootHour.text.trim(), _rebootMinute.text.trim()],
+        'week': daysOrdered,
+        'time': [_rebootTime.hour.toString().padLeft(2, '0'), _rebootTime.minute.toString().padLeft(2, '0')],
       });
       await _load();
-      advShowMsg(context, 'Scheduled reboot saved and reloaded.');
+      advShowMsg(context, _rebootEnabled ? 'Scheduled reboot saved: ${Weekday.summary(daysOrdered)} at ${formatDisplayTime(_rebootTime)}.' : 'Scheduled reboot saved and turned off.');
     } on SessionExpiredException {
       widget.onSessionExpired();
     } catch (e) {
@@ -752,11 +876,11 @@ class _SystemScreenState extends State<SystemScreen> {
   }
 
   Future<void> _saveSession() async {
-    final s = int.tryParse(_sessionTime.text.trim()) ?? 300;
+    final s = (_sessionMinutes ?? 5) * 60;
     try {
-      await widget.api.post('/api/v1/lua/userinfo/setSessionTime', {'enabled': _sessionEnabled, 'sessiontime': s});
+      await widget.api.post('/api/v1/lua/userinfo/setSessionTime', {'enabled': _sessionMinutes != null, 'sessiontime': s});
       await _load();
-      advShowMsg(context, 'Session timeout saved and reloaded.');
+      advShowMsg(context, _sessionMinutes == null ? 'Session timeout saved and turned off.' : 'Session timeout saved: ${_sessionMinutes == 60 ? '1 hour' : '$_sessionMinutes minutes'}.');
     } on SessionExpiredException {
       widget.onSessionExpired();
     } catch (e) {
@@ -808,7 +932,7 @@ class _SystemScreenState extends State<SystemScreen> {
     try {
       await widget.api.post('/api/v1/lua/LED/setLed', {'led_all': _ledAll, 'LedConfigList': payloadList});
       await _load();
-      advShowMsg(context, 'LED saved and reloaded. Mode is now $_ledAll.');
+      advShowMsg(context, 'LED mode is now ${LedMode.fromCode(_ledAll).label}.');
     } on SessionExpiredException {
       widget.onSessionExpired();
     } catch (e) {
@@ -819,7 +943,7 @@ class _SystemScreenState extends State<SystemScreen> {
   Future<void> _setRouterLanguageEnglish() async {
     try {
       await widget.api.post('/api/v1/lua/Language/setLang', {'lang': 'en'});
-      advShowMsg(context, 'Router language set to English. Other web panel languages are not sent to the stock backend, as in the web panel.');
+      advShowMsg(context, 'Router language set to English.');
     } on SessionExpiredException {
       widget.onSessionExpired();
     } catch (e) {
@@ -842,7 +966,7 @@ class _SystemScreenState extends State<SystemScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('Version: $_firmware', style: const TextStyle(fontWeight: FontWeight.w700)),
-                Text('Free size: $_freeSize', style: const TextStyle(color: appMuted)),
+                Text('Free size: ${formatFirmwareSize(_freeSize)}', style: const TextStyle(color: appMuted)),
                 const SizedBox(height: 6),
                 const Text('Firmware file upload and factory reset are not in this build.', style: TextStyle(color: appMuted, fontSize: 12, height: 1.45)),
               ],
@@ -865,7 +989,12 @@ class _SystemScreenState extends State<SystemScreen> {
                 Text('Router time: $_routerTime', style: const TextStyle(color: appMuted)),
                 Text('Timezone: $_tzName', style: const TextStyle(color: appMuted)),
                 const SizedBox(height: 10),
-                advField(_tz, 'Timezone, for example GMT+7:00'),
+                choiceRow('Timezone', timezoneOptions.where((t) => t.$1 == _tzCode).isEmpty ? _tzCode : timezoneOptions.firstWhere((t) => t.$1 == _tzCode).$2, null, () async {
+                  final opts = <(String, String, String?)>[for (final t in timezoneOptions) (t.$1, t.$2, null)];
+                  if (!opts.any((o) => o.$1 == _tzCode)) opts.insert(0, (_tzCode, 'Custom setting', 'Tap to choose a standard option.'));
+                  final picked = await showChoiceSheet<String>(context, title: 'Timezone', options: opts, current: _tzCode, searchable: true);
+                  if (picked != null) setState(() => _tzCode = picked);
+                }),
                 FilledButton(onPressed: _saveTimezone, child: const Text('Save timezone')),
                 const SizedBox(height: 8),
                 OutlinedButton(onPressed: _syncPhoneTime, child: const Text('Sync router time to this phone')),
@@ -877,20 +1006,9 @@ class _SystemScreenState extends State<SystemScreen> {
             child: Column(
               children: [
                 SwitchListTile(value: _rebootEnabled, onChanged: (v) => setState(() => _rebootEnabled = v), title: const Text('Scheduled reboot')),
-                DropdownButtonFormField<String>(
-                  initialValue: _days.contains(_rebootDay) ? _rebootDay : 'wed',
-                  items: _days.map((d) => DropdownMenuItem(value: d, child: Text(d))).toList(),
-                  onChanged: (v) => setState(() => _rebootDay = v ?? 'wed'),
-                  decoration: const InputDecoration(labelText: 'Day'),
-                ),
+                WeekdayChips(selected: _rebootDays, onChanged: (v) => setState(() => _rebootDays = v)),
                 const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(child: advField(_rebootHour, 'Hour')),
-                    const SizedBox(width: 10),
-                    Expanded(child: advField(_rebootMinute, 'Minute')),
-                  ],
-                ),
+                TimePickerRow(label: 'Reboot time', value: _rebootTime, onChanged: (v) => setState(() => _rebootTime = v)),
                 FilledButton(onPressed: _saveReboot, child: const Text('Save scheduled reboot')),
               ],
             ),
@@ -899,8 +1017,14 @@ class _SystemScreenState extends State<SystemScreen> {
           GlassCard(
             child: Column(
               children: [
-                SwitchListTile(value: _sessionEnabled, onChanged: (v) => setState(() => _sessionEnabled = v), title: const Text('Session timeout enabled')),
-                advField(_sessionTime, 'Session timeout seconds', keyboardType: TextInputType.number),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: SegmentedControl<int?>(
+                    options: const [(null, 'Off'), (5, '5 min'), (15, '15 min'), (30, '30 min'), (60, '1 hour')],
+                    value: _sessionMinutes,
+                    onChanged: (v) => setState(() => _sessionMinutes = v),
+                  ),
+                ),
                 FilledButton(onPressed: _saveSession, child: const Text('Save session timeout')),
                 const SizedBox(height: 12),
                 OutlinedButton(onPressed: _setRouterLanguageEnglish, child: const Text('Set router language to English')),
@@ -924,16 +1048,12 @@ class _SystemScreenState extends State<SystemScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                DropdownButtonFormField<String>(
-                  initialValue: ['restore', 'close', 'sched'].contains(_ledAll) ? _ledAll : 'restore',
-                  items: const [
-                    DropdownMenuItem(value: 'restore', child: Text('Normal')),
-                    DropdownMenuItem(value: 'close', child: Text('LED off')),
-                    DropdownMenuItem(value: 'sched', child: Text('Schedule')),
-                  ],
-                  onChanged: (v) => setState(() => _ledAll = v ?? 'restore'),
-                  decoration: const InputDecoration(labelText: 'LED mode'),
+                SegmentedControl<LedMode>(
+                  options: const [(LedMode.normal, 'Normal'), (LedMode.off, 'LED off'), (LedMode.schedule, 'Schedule')],
+                  value: LedMode.fromCode(_ledAll),
+                  onChanged: (v) => setState(() => _ledAll = v.code),
                 ),
+                Text(LedMode.fromCode(_ledAll).description, style: const TextStyle(color: appMuted, fontSize: 12)),
                 const SizedBox(height: 10),
                 for (var i = 0; i < _ledSchedules.length; i++) _ledScheduleCard(i),
                 OutlinedButton.icon(
@@ -942,7 +1062,7 @@ class _SystemScreenState extends State<SystemScreen> {
                   label: const Text('Add LED schedule'),
                 ),
                 const SizedBox(height: 8),
-                const Text('This sends the real schedule list from the web panel, not an empty list. The old empty list version never saved a schedule.', style: TextStyle(color: appMuted, fontSize: 12, height: 1.45)),
+                const Text('Schedules below are sent as a list. An empty list would not save a schedule.', style: TextStyle(color: appMuted, fontSize: 12, height: 1.45)),
                 const SizedBox(height: 10),
                 FilledButton(onPressed: _saveLed, child: const Text('Save LED')),
               ],
@@ -961,8 +1081,6 @@ class _SystemScreenState extends State<SystemScreen> {
     while (time.length < 2) {
       time.add('');
     }
-    final start = TextEditingController(text: time[0]);
-    final end = TextEditingController(text: time[1]);
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(12),
@@ -971,7 +1089,7 @@ class _SystemScreenState extends State<SystemScreen> {
         children: [
           Row(
             children: [
-              Expanded(child: Text('Schedule ${i + 1}', style: const TextStyle(fontWeight: FontWeight.w800))),
+              Expanded(child: Text('Schedule ${i + 1}', style: const TextStyle(fontWeight: FontWeight.w700))),
               Switch(
                 value: s['enable'] == true,
                 onChanged: (v) => setState(() => _ledSchedules[i]['enable'] = v),
@@ -979,32 +1097,20 @@ class _SystemScreenState extends State<SystemScreen> {
               IconButton(icon: const Icon(Icons.delete_outline, color: appRed), onPressed: () => setState(() => _ledSchedules.removeAt(i))),
             ],
           ),
-          Wrap(
-            spacing: 6,
-            children: [
-              for (final d in _days)
-                FilterChip(
-                  label: Text(d),
-                  selected: week.contains(d),
-                  onSelected: (v) => setState(() {
-                    final w = List<String>.from(week);
-                    if (v) {
-                      if (!w.contains(d)) w.add(d);
-                    } else {
-                      w.remove(d);
-                    }
-                    _ledSchedules[i]['week'] = w;
-                  }),
-                ),
-            ],
+          WeekdayChips(
+            selected: week.toSet(),
+            onChanged: (v) => setState(() => _ledSchedules[i]['week'] = v.toList()),
           ),
           const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(child: TextField(controller: start, onChanged: (v) => setState(() => _ledSchedules[i]['time'] = [v, end.text]), decoration: const InputDecoration(labelText: 'Start HH:MM'))),
-              const SizedBox(width: 10),
-              Expanded(child: TextField(controller: end, onChanged: (v) => setState(() => _ledSchedules[i]['time'] = [start.text, v]), decoration: const InputDecoration(labelText: 'End HH:MM'))),
-            ],
+          TimePickerRow(
+            label: 'Start',
+            value: parseDisplayTime(time.isNotEmpty ? time[0] : ''),
+            onChanged: (v) => setState(() => _ledSchedules[i]['time'] = [formatDisplayTime(v), time.length > 1 ? time[1] : '']),
+          ),
+          TimePickerRow(
+            label: 'End',
+            value: parseDisplayTime(time.length > 1 ? time[1] : ''),
+            onChanged: (v) => setState(() => _ledSchedules[i]['time'] = [time.isNotEmpty ? time[0] : '', formatDisplayTime(v)]),
           ),
         ],
       ),
@@ -1162,7 +1268,7 @@ class _FilterScreenState extends State<FilterScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(str(m['name'], 'Unnamed'), style: const TextStyle(fontWeight: FontWeight.w800)),
+                          Text(str(m['name'], 'Unnamed'), style: const TextStyle(fontWeight: FontWeight.w700)),
                           Text(str(m['mac']), style: const TextStyle(color: appMuted)),
                         ],
                       ),
@@ -1193,14 +1299,15 @@ class _MediaScreenState extends State<MediaScreen> {
   String? _error;
   bool _iptvEnabled = false;
   final _vlan = TextEditingController();
-  final _ethPorts = TextEditingController();
-  final _radio1 = TextEditingController();
-  final _radio2 = TextEditingController();
+  List<int> _ethPortsSel = [];
+  List<int> _ethPortOptions = [2, 3, 4];
+  List<String> _radio1List = [];
+  List<String> _radio2List = [];
   bool _igmpEnabled = false;
   final _igmpMode = TextEditingController();
   final _igmpLan2Lan = TextEditingController();
-  final _groupRadio1 = TextEditingController();
-  final _groupRadio2 = TextEditingController();
+  List<int> _group1 = [];
+  List<int> _group2 = [];
 
   @override
   void initState() {
@@ -1211,22 +1318,9 @@ class _MediaScreenState extends State<MediaScreen> {
   @override
   void dispose() {
     _vlan.dispose();
-    _ethPorts.dispose();
-    _radio1.dispose();
-    _radio2.dispose();
     _igmpMode.dispose();
     _igmpLan2Lan.dispose();
-    _groupRadio1.dispose();
-    _groupRadio2.dispose();
     super.dispose();
-  }
-
-  List<dynamic> _commaToList(String s) {
-    return s.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
-  }
-
-  List<dynamic> _commaToInts(String s) {
-    return _commaToList(s).map((e) => int.tryParse(e) ?? e).toList();
   }
 
   Future<void> _load() async {
@@ -1240,9 +1334,18 @@ class _MediaScreenState extends State<MediaScreen> {
       if (d is Map) {
         _iptvEnabled = d['enable'] == 'yes';
         if (d['vlanid'] != null) _vlan.text = d['vlanid'].toString();
-        if (d['ethport'] is List) _ethPorts.text = (d['ethport'] as List).join(', ');
-        if (d['radio1'] is List) _radio1.text = (d['radio1'] as List).join(', ');
-        if (d['radio2'] is List) _radio2.text = (d['radio2'] as List).join(', ');
+        if (d['ethport'] is List) _ethPortsSel = (d['ethport'] as List).map((e) => int.tryParse(e.toString())).whereType<int>().toList();
+        if (d['radio1'] is List) _radio1List = (d['radio1'] as List).map((e) => e.toString()).toList();
+        if (d['radio2'] is List) _radio2List = (d['radio2'] as List).map((e) => e.toString()).toList();
+      }
+    } catch (_) {}
+    try {
+      final ports = await widget.api.get('/api/v1/lua/IPTV/IptvGetPort');
+      final pd = dataOf(ports);
+      final pl = pd is Map ? (pd['ports'] ?? pd['availablePorts'] ?? pd['list']) : null;
+      if (pl is List) {
+        final parsed = pl.map((e) => int.tryParse(e.toString())).whereType<int>().toList();
+        if (parsed.isNotEmpty) _ethPortOptions = parsed;
       }
     } catch (_) {}
     try {
@@ -1258,21 +1361,26 @@ class _MediaScreenState extends State<MediaScreen> {
       final g = await widget.api.get('/api/v1/lua/GroupTransfer/GetUcigmpQuery');
       final d = dataOf(g);
       if (d is Map) {
-        if (d['radio1'] is List) _groupRadio1.text = (d['radio1'] as List).join(', ');
-        if (d['radio2'] is List) _groupRadio2.text = (d['radio2'] as List).join(', ');
+        if (d['radio1'] is List) _group1 = (d['radio1'] as List).map((e) => int.tryParse(e.toString())).whereType<int>().toList();
+        if (d['radio2'] is List) _group2 = (d['radio2'] as List).map((e) => int.tryParse(e.toString())).whereType<int>().toList();
       }
     } catch (_) {}
     if (mounted) setState(() => _loading = false);
   }
 
   Future<void> _saveIptv() async {
+    final vlan = int.tryParse(_vlan.text.trim());
+    if (vlan == null || vlan < 1 || vlan > 4094) {
+      advShowMsg(context, 'VLAN ID must be between 1 and 4094.');
+      return;
+    }
     try {
       await widget.api.post('/api/v1/lua/IPTV/SetIptv', {
         'enable': _iptvEnabled ? 'yes' : 'no',
-        'vlanid': int.tryParse(_vlan.text.trim()) ?? 0,
-        'ethport': _commaToInts(_ethPorts.text),
-        'radio1': _commaToList(_radio1.text),
-        'radio2': _commaToList(_radio2.text),
+        'vlanid': vlan,
+        'ethport': _ethPortsSel,
+        'radio1': _radio1List,
+        'radio2': _radio2List,
       });
       await _load();
       advShowMsg(context, 'IPTV saved and reloaded.');
@@ -1302,8 +1410,8 @@ class _MediaScreenState extends State<MediaScreen> {
   Future<void> _saveGroup() async {
     try {
       await widget.api.post('/api/v1/lua/GroupTransfer/SetUcigmpQuery', {
-        'radio1': _commaToList(_groupRadio1.text),
-        'radio2': _commaToList(_groupRadio2.text),
+        'radio1': _group1,
+        'radio2': _group2,
       });
       await _load();
       advShowMsg(context, 'Group transfer saved and reloaded.');
@@ -1328,10 +1436,29 @@ class _MediaScreenState extends State<MediaScreen> {
             child: Column(
               children: [
                 SwitchListTile(value: _iptvEnabled, onChanged: (v) => setState(() => _iptvEnabled = v), title: const Text('IPTV enabled')),
-                advField(_vlan, 'VLAN id', keyboardType: TextInputType.number),
-                advField(_ethPorts, 'Ethernet ports, comma separated'),
-                advField(_radio1, 'Radio 1, comma separated'),
-                advField(_radio2, 'Radio 2, comma separated'),
+                advField(_vlan, 'VLAN ID (1 to 4094)', keyboardType: TextInputType.number),
+                const Align(alignment: Alignment.centerLeft, child: Text('Ethernet ports', style: TextStyle(fontWeight: FontWeight.w600))),
+                Wrap(
+                  spacing: 6,
+                  children: [
+                    for (final port in {..._ethPortOptions, ..._ethPortsSel}.toList()..sort())
+                      FilterChip(
+                        label: Text('LAN $port'),
+                        selected: _ethPortsSel.contains(port),
+                        onSelected: (v) => setState(() {
+                          if (v) {
+                            if (!_ethPortsSel.contains(port)) _ethPortsSel.add(port);
+                          } else {
+                            _ethPortsSel.remove(port);
+                          }
+                        }),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                ChipInput(values: _radio1List, onChanged: (v) => setState(() => _radio1List = v), addLabel: 'Add a Radio 1 entry', hint: 'Entry value'),
+                const SizedBox(height: 10),
+                ChipInput(values: _radio2List, onChanged: (v) => setState(() => _radio2List = v), addLabel: 'Add a Radio 2 entry', hint: 'Entry value'),
                 FilledButton(onPressed: _saveIptv, child: const Text('Save IPTV')),
               ],
             ),
@@ -1343,6 +1470,7 @@ class _MediaScreenState extends State<MediaScreen> {
                 SwitchListTile(value: _igmpEnabled, onChanged: (v) => setState(() => _igmpEnabled = v), title: const Text('IGMP snooping enabled')),
                 advField(_igmpMode, 'Mode'),
                 advField(_igmpLan2Lan, 'LAN to LAN'),
+                const Text('No confirmed choice list yet, kept as text.', style: TextStyle(color: appMuted, fontSize: 12)),
                 FilledButton(onPressed: _saveIgmp, child: const Text('Save IGMP snooping')),
               ],
             ),
@@ -1351,8 +1479,43 @@ class _MediaScreenState extends State<MediaScreen> {
           GlassCard(
             child: Column(
               children: [
-                advField(_groupRadio1, 'Radio 1 groups, comma separated'),
-                advField(_groupRadio2, 'Radio 2 groups, comma separated'),
+                const Align(alignment: Alignment.centerLeft, child: Text('Radio 1 BSSIDs', style: TextStyle(fontWeight: FontWeight.w600))),
+                Wrap(
+                  spacing: 6,
+                  children: [
+                    for (var b = 1; b <= 4; b++)
+                      FilterChip(
+                        label: Text('BSSID $b'),
+                        selected: _group1.contains(b),
+                        onSelected: (v) => setState(() {
+                          if (v) {
+                            if (!_group1.contains(b)) _group1.add(b);
+                          } else {
+                            _group1.remove(b);
+                          }
+                        }),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                const Align(alignment: Alignment.centerLeft, child: Text('Radio 2 BSSIDs', style: TextStyle(fontWeight: FontWeight.w600))),
+                Wrap(
+                  spacing: 6,
+                  children: [
+                    for (var b = 1; b <= 4; b++)
+                      FilterChip(
+                        label: Text('BSSID $b'),
+                        selected: _group2.contains(b),
+                        onSelected: (v) => setState(() {
+                          if (v) {
+                            if (!_group2.contains(b)) _group2.add(b);
+                          } else {
+                            _group2.remove(b);
+                          }
+                        }),
+                      ),
+                  ],
+                ),
                 FilledButton(onPressed: _saveGroup, child: const Text('Save group transfer')),
               ],
             ),
