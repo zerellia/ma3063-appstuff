@@ -578,7 +578,6 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Map<String, String>> _radios = [];
   bool _stale = false;
   String _staleTime = '';
-  List<double> _cpuSamples = [];
 
   @override
   void initState() {
@@ -755,8 +754,6 @@ class _HomeScreenState extends State<HomeScreen> {
         'temp': _cpuTemp,
       });
     }
-    final samples = await LocalStore.samples();
-    _cpuSamples = samples.map((e) => e['cpu']).whereType<num>().map((n) => n.toDouble()).toList();
     if (!mounted) return;
     setState(() => _loading = false);
     // CPU is measured after the other calls plus a 2 second pause, exactly
@@ -908,8 +905,6 @@ class _HomeScreenState extends State<HomeScreen> {
               Expanded(child: _stat('Load 1m', _loadAvg, Icons.show_chart_outlined)),
             ],
           ),
-          sectionTitle('CPU trend, sampled while the app is open'),
-          RepaintBoundary(child: reyeeCard(child: Sparkline(values: _cpuSamples))),
           sectionTitle('Radios'),
           if (_radios.isEmpty)
             reyeeCard(child: Text(_loading ? 'Loading...' : 'No radio data returned.'))

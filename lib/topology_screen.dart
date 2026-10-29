@@ -22,7 +22,6 @@ class _TopologyScreenState extends State<TopologyScreen> {
   String? _error;
   String _hostname = 'Main router';
   List<Map<String, dynamic>> _clients = [];
-  List<Map<String, dynamic>> _ports = [];
   Map<String, dynamic> _nicks = {};
   Map<String, dynamic> _icons = {};
 
@@ -70,19 +69,6 @@ class _TopologyScreenState extends State<TopologyScreen> {
         }).toList();
       } catch (_) {}
       _clients = list;
-    } catch (_) {}
-    try {
-      final r = await widget.api.get('/api/v1/lua/Portinfo/list');
-      final d = dataOf(r);
-      if (d is Map) {
-        final list = listOf(d['List'] ?? d['list']);
-        final rows = list.whereType<Map>().toList();
-        rows.sort((a, b) => (numOrNull(a['portId']) ?? 0).compareTo(numOrNull(b['portId']) ?? 0));
-        _ports = rows
-            .map((m) => portDisplay(Map<String, dynamic>.from(m)))
-            .where((p) => (p['portId'] as int) >= 1 && (p['portId'] as int) <= 4)
-            .toList();
-      }
     } catch (_) {}
     try {
       _nicks = await LocalStore.nicknames();
@@ -136,17 +122,6 @@ class _TopologyScreenState extends State<TopologyScreen> {
     );
   }
 
-  Widget _connector() {
-    return const Padding(
-      padding: EdgeInsets.only(left: 27),
-      child: SizedBox(
-        width: 2,
-        height: 20,
-        child: DecoratedBox(decoration: BoxDecoration(color: appOutlineVariant)),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final standardCounts = countByStandard(_clients);
@@ -175,8 +150,22 @@ class _TopologyScreenState extends State<TopologyScreen> {
               child: Text(_error!, style: const TextStyle(color: appRed)),
             ),
           _section('Network map'),
-          _nodeTile(icon: Icons.router_outlined, title: _hostname, subtitle: 'Main router · RG-MA3063'),
-          _connector(),
+          const GlassCard(
+            child: Text(
+              'Lines show devices connected to the main router.',
+              style: TextStyle(color: appMuted, height: 1.45),
+            ),
+          ),
+          if (_clients.isEmpty)
+            const GlassCard(child: Text('No online devices found.', style: TextStyle(color: appMuted)))
+          else
+            _StarMap(
+              hostname: _hostname,
+              clients: _clients,
+              clientName: _clientName,
+              iconFor: (c) => deviceIconForKey(_icons[(c['mac'] ?? '').toString().toUpperCase()]?.toString()),
+              onTap: _pickIcon,
+            ),
           const Padding(
             padding: EdgeInsets.fromLTRB(4, 0, 4, 8),
             child: Text('Connected devices', style: TextStyle(fontWeight: FontWeight.w700)),
@@ -246,47 +235,135 @@ class _TopologyScreenState extends State<TopologyScreen> {
               ],
             ),
           ),
-          _section('Ports'),
-          if (_ports.isEmpty)
-            const GlassCard(child: Text('No port data returned.', style: TextStyle(color: appMuted)))
-          else
-            GlassCard(
-              child: Row(
-                children: [
-                  for (final p in _ports)
-                    Expanded(
-                      child: Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 4),
-                        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 4),
-                        decoration: BoxDecoration(
-                          color: (p['up'] as bool) ? const Color(0xFFE6F4EA) : const Color(0xFFF1F5F9),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: (p['up'] as bool) ? const Color(0xFF16A34A) : appOutlineVariant),
-                        ),
-                        child: Column(
-                          children: [
-                            Icon(
-                              (p['up'] as bool) ? Icons.bolt : Icons.link_off_outlined,
-                              color: (p['up'] as bool) ? const Color(0xFF137333) : appMuted,
-                              size: 20,
-                            ),
-                            const SizedBox(height: 8),
-                            Text(p['portLabel'] as String, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
-                            const SizedBox(height: 4),
-                            Text(p['speedLabel'] as String, textAlign: TextAlign.center, style: const TextStyle(color: appMuted, fontSize: 11)),
-                          ],
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
           const SizedBox(height: 16),
           OutlinedButton.icon(onPressed: _load, icon: const Icon(Icons.refresh), label: const Text('Refresh')),
         ],
       ),
     );
   }
+}
+
+/// Star map: router at the top centre, one straight line to each
+/// connected device below. Lines mean only that the device is
+/// connected to the main router, never a mesh node or a port, because
+/// the router does not report that attachment. Device positions are
+/// computed from the same grid formula the painter uses, so lines and
+/// nodes always line up. Tapping a device opens the local icon picker.
+class _StarMap extends StatelessWidget {
+  const _StarMap({required this.hostname, required this.clients, required this.clientName, required this.iconFor, required this.onTap});
+  final String hostname;
+  final List<Map<String, dynamic>> clients;
+  final String Function(Map<String, dynamic>) clientName;
+  final IconData Function(Map<String, dynamic>) iconFor;
+  final void Function(Map<String, dynamic>) onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassCard(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final width = constraints.maxWidth;
+          final columns = width >= 320 ? 3 : 2;
+          final cellWidth = width / columns;
+          const cellHeight = 104.0;
+          const gridTop = 124.0;
+          final rows = (clients.length / columns).ceil();
+          final height = gridTop + rows * cellHeight;
+          Offset deviceCenter(int i) {
+            final col = i % columns;
+            final row = i ~/ columns;
+            return Offset(col * cellWidth + cellWidth / 2, gridTop + row * cellHeight + 24);
+          }
+
+          return SizedBox(
+            height: height,
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: CustomPaint(
+                    painter: _StarLinesPainter(
+                      router: Offset(width / 2, 110),
+                      targets: [for (var i = 0; i < clients.length; i++) deviceCenter(i)],
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  top: 0,
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 64,
+                        height: 64,
+                        decoration: BoxDecoration(color: appPrimaryContainer, shape: BoxShape.circle, border: Border.all(color: appBlue, width: 1.5)),
+                        child: const Icon(Icons.router_outlined, color: appBlue, size: 32),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(hostname, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700)),
+                      const Text('Main router', style: TextStyle(color: appMuted, fontSize: 12)),
+                    ],
+                  ),
+                ),
+                for (var i = 0; i < clients.length; i++) ...[
+                  Positioned(
+                    left: deviceCenter(i).dx - 24,
+                    top: deviceCenter(i).dy - 24,
+                    child: GestureDetector(
+                      onTap: () => onTap(clients[i]),
+                      child: Stack(
+                        children: [
+                          Container(
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle, border: Border.all(color: appBlue)),
+                            child: Icon(iconFor(clients[i]), color: appBlue, size: 24),
+                          ),
+                          Positioned(
+                            right: 2,
+                            bottom: 2,
+                            child: Container(width: 12, height: 12, decoration: BoxDecoration(color: const Color(0xFF16A34A), shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 2))),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    left: (i % columns) * cellWidth,
+                    top: deviceCenter(i).dy + 28,
+                    width: cellWidth,
+                    child: GestureDetector(
+                      onTap: () => onTap(clients[i]),
+                      child: Text(clientName(clients[i]), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _StarLinesPainter extends CustomPainter {
+  const _StarLinesPainter({required this.router, required this.targets});
+  final Offset router;
+  final List<Offset> targets;
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0xFFBFDBFE)
+      ..strokeWidth = 2
+      ..style = PaintingStyle.stroke;
+    for (final t in targets) {
+      canvas.drawLine(router, t, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _StarLinesPainter old) => old.router != router || old.targets.length != targets.length;
 }
 
 class _Donut extends StatelessWidget {
