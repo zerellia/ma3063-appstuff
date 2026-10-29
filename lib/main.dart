@@ -3,15 +3,20 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api.dart';
+import 'theme.dart';
+import 'local_store.dart';
+import 'advanced2.dart';
+import 'local_screen.dart';
 
 void main() {
   runApp(const MaApp());
 }
 
 const Color reyeeBlue = Color(0xFF2F7CF6);
-const Color reyeeBg = Color(0xFFF2F5F9);
-const Color reyeeInk = Color(0xFF1A2433);
-const Color reyeeMuted = Color(0xFF667085);
+const Color reyeeCyan = Color(0xFF00C2FF);
+const Color reyeeBg = Color(0xFFEDF3FA);
+const Color reyeeInk = Color(0xFF0F172A);
+const Color reyeeMuted = Color(0xFF64748B);
 
 class MaApp extends StatelessWidget {
   const MaApp({super.key});
@@ -33,7 +38,7 @@ class MaApp extends StatelessWidget {
         cardTheme: CardThemeData(
           color: Colors.white,
           elevation: 0,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
         ),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
@@ -46,7 +51,7 @@ class MaApp extends StatelessWidget {
             backgroundColor: reyeeBlue,
             foregroundColor: Colors.white,
             minimumSize: const Size.fromHeight(50),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
           ),
         ),
       ),
@@ -56,8 +61,14 @@ class MaApp extends StatelessWidget {
 }
 
 Widget reyeeCard({required Widget child, EdgeInsets padding = const EdgeInsets.all(16)}) {
-  return Card(
+  return Container(
     margin: const EdgeInsets.only(bottom: 12),
+    decoration: BoxDecoration(
+      color: Colors.white.withValues(alpha: 0.96),
+      border: Border.all(color: const Color(0xFFDCE7F2)),
+      borderRadius: BorderRadius.circular(26),
+      boxShadow: const [BoxShadow(color: Color(0x140F172A), blurRadius: 18, offset: Offset(0, 6))],
+    ),
     child: Padding(padding: padding, child: child),
   );
 }
@@ -271,10 +282,13 @@ class _LoginScreenState extends State<LoginScreen> {
             children: [
               const SizedBox(height: 24),
               Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(color: reyeeBlue, borderRadius: BorderRadius.circular(18)),
-                child: const Icon(Icons.router_outlined, color: Colors.white, size: 36),
+                width: 72,
+                height: 72,
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(colors: [reyeeBlue, reyeeCyan], begin: Alignment.topLeft, end: Alignment.bottomRight),
+                  borderRadius: BorderRadius.all(Radius.circular(24)),
+                ),
+                child: const Icon(Icons.router_outlined, color: Colors.white, size: 38),
               ),
               const SizedBox(height: 20),
               const Text('MA3063 Control', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: reyeeInk)),
@@ -464,16 +478,48 @@ class _MainShellState extends State<MainShell> {
     return Scaffold(
       appBar: AppBar(title: Text('MA3063 · ${titles[_index]}')),
       body: IndexedStack(index: _index, children: screens),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _index,
-        onDestinationSelected: (i) => setState(() => _index = i),
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Home'),
-          NavigationDestination(icon: Icon(Icons.devices_outlined), selectedIcon: Icon(Icons.devices), label: 'Devices'),
-          NavigationDestination(icon: Icon(Icons.wifi), selectedIcon: Icon(Icons.wifi), label: 'WiFi'),
-          NavigationDestination(icon: Icon(Icons.health_and_safety_outlined), selectedIcon: Icon(Icons.health_and_safety), label: 'Tools'),
-          NavigationDestination(icon: Icon(Icons.settings_outlined), selectedIcon: Icon(Icons.settings), label: 'Settings'),
-        ],
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+          child: Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border.all(color: const Color(0xFFDCE7F2)),
+              borderRadius: BorderRadius.circular(999),
+              boxShadow: const [BoxShadow(color: Color(0x140F172A), blurRadius: 18, offset: Offset(0, 6))],
+            ),
+            child: Row(
+              children: [
+                for (var i = 0; i < titles.length; i++)
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => _index = i),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        decoration: BoxDecoration(
+                          color: _index == i ? reyeeBlue : Colors.transparent,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              [Icons.home_outlined, Icons.devices_outlined, Icons.wifi, Icons.health_and_safety_outlined, Icons.settings_outlined][i],
+                              size: 20,
+                              color: _index == i ? Colors.white : reyeeMuted,
+                            ),
+                            const SizedBox(height: 2),
+                            Text(titles[i], style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: _index == i ? Colors.white : reyeeMuted)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -509,6 +555,10 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Map<String, String>> _ports = [];
   List<Map<String, String>> _ssids = [];
   List<Map<String, String>> _radios = [];
+  List<dynamic> _topoChildren = [];
+  bool _stale = false;
+  String _staleTime = '';
+  List<double> _cpuSamples = [];
 
   @override
   void initState() {
@@ -610,7 +660,15 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final r = await widget.api.get('/api/v1/lua/mesh/MeshGetTopo');
       final d = dataOf(r);
-      if (d is Map) _meshCount = '${meshNodeCount(d['childList'])}';
+      if (d is Map) {
+        _meshCount = '${meshNodeCount(d['childList'])}';
+        final cl = d['childList'];
+        if (cl is List) {
+          _topoChildren = cl;
+        } else if (cl is Map) {
+          _topoChildren = cl.values.toList();
+        }
+      }
     } catch (_) {}
     try {
       final r = await widget.api.get('/api/v1/lua/Portinfo/list');
@@ -646,6 +704,31 @@ class _HomeScreenState extends State<HomeScreen> {
         if (zones.isNotEmpty) _cpuTemp = formatTemp(zones.first['temp']);
       } catch (_) {}
     }
+    if (_hostname == '-' && _wanIp == '-' && _clientCount == '-') {
+      final cache = await LocalStore.homeCache();
+      if (cache.$1 != null) {
+        _stale = true;
+        _staleTime = cache.$2 == null ? '' : DateTime.fromMillisecondsSinceEpoch(cache.$2!).toString();
+        final c = cache.$1!;
+        if (c['hostname'] != null) _hostname = c['hostname'].toString();
+        if (c['wanIp'] != null) _wanIp = c['wanIp'].toString();
+        if (c['clients'] != null) _clientCount = c['clients'].toString();
+        if (c['mesh'] != null) _meshCount = c['mesh'].toString();
+      }
+    } else {
+      _stale = false;
+      await LocalStore.saveHomeCache({
+        'hostname': _hostname,
+        'wanIp': _wanIp,
+        'clients': _clientCount,
+        'mesh': _meshCount,
+        'cpu': _cpu,
+        'mem': _mem,
+        'temp': _cpuTemp,
+      });
+    }
+    final samples = await LocalStore.samples();
+    _cpuSamples = samples.map((e) => e['cpu']).whereType<num>().map((n) => n.toDouble()).toList();
     if (!mounted) return;
     setState(() => _loading = false);
     // CPU is measured after the other calls plus a 2 second pause, exactly
@@ -662,6 +745,14 @@ class _HomeScreenState extends State<HomeScreen> {
           if (d['load1'] != null) _loadAvg = str(d['load1']);
           if (d['uptime'] != null) _uptime = formatDuration(d['uptime']);
         });
+        final cpuN = numOrNull(d['cpuusage']);
+        final memN = numOrNull(d['memusage']);
+        double? tempN;
+        final tempText = _cpuTemp.replaceAll(' °C', '');
+        tempN = double.tryParse(tempText);
+        await LocalStore.addSample(cpu: cpuN, mem: memN, temp: tempN);
+        if (cpuN != null && cpuN > 85) await LocalStore.addAlert('CPU usage observed at ${cpuN.toStringAsFixed(0)}%, above the 85% local threshold.');
+        if (tempN != null && tempN > 80) await LocalStore.addAlert('CPU temperature observed at ${tempN.toStringAsFixed(1)} C, above the 80 C local threshold.');
       }
     } catch (_) {}
   }
@@ -702,58 +793,117 @@ class _HomeScreenState extends State<HomeScreen> {
         padding: const EdgeInsets.all(16),
         children: [
           errorBanner(_error),
-          reyeeCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+          if (_stale)
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: const Color(0xFFFEF3C7), borderRadius: BorderRadius.circular(16)),
+              child: Text('Showing the last cached snapshot from $_staleTime because the live router did not answer. Tap Refresh to retry.', style: const TextStyle(color: Color(0xFF92400E))),
+            ),
+          if (_loading)
+            skeletonCard()
+          else
+            Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(colors: [reyeeBlue, reyeeCyan], begin: Alignment.topLeft, end: Alignment.bottomRight),
+                borderRadius: BorderRadius.all(Radius.circular(28)),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.router_outlined, color: reyeeBlue, size: 28),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(_hostname, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
-                          Text('$_model · $_firmware', style: const TextStyle(color: reyeeMuted)),
-                        ],
-                      ),
+                    Row(
+                      children: [
+                        const Icon(Icons.router_outlined, color: Colors.white, size: 28),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(_hostname, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white)),
+                              Text('$_model', style: const TextStyle(color: Colors.white70)),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.25), borderRadius: BorderRadius.circular(999)),
+                          child: const Text('Online', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12)),
+                        ),
+                      ],
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(color: const Color(0xFFE6F4EA), borderRadius: BorderRadius.circular(20)),
-                      child: const Text('Online', style: TextStyle(color: Color(0xFF137333), fontWeight: FontWeight.w700)),
-                    ),
+                    const SizedBox(height: 16),
+                    Text(_clientCount, style: const TextStyle(fontSize: 40, fontWeight: FontWeight.w800, color: Colors.white, fontFeatures: [FontFeature.tabularFigures()])),
+                    const Text('devices online', style: TextStyle(color: Colors.white70)),
+                    const SizedBox(height: 12),
+                    Text('WAN $_wanIp · $_wanProto', style: const TextStyle(color: Colors.white)),
+                    Text('LAN $_lanIp · Uptime $_uptime', style: const TextStyle(color: Colors.white70)),
+                    Text('Firmware $_firmware · Connector $_connector', style: const TextStyle(color: Colors.white70, fontSize: 12)),
                   ],
                 ),
-                const Divider(height: 24),
-                infoRow('WAN IP', _wanIp),
-                infoRow('WAN type', _wanProto),
-                infoRow('LAN IP', _lanIp),
-                infoRow('Uptime', _uptime),
-                infoRow('Connector', _connector),
-              ],
+              ),
             ),
+          Row(
+            children: [
+              Expanded(
+                child: reyeeCard(
+                  child: Column(
+                    children: [
+                      RingGauge(value: double.tryParse(_cpu.replaceAll('%', '')) ?? 0, label: 'CPU usage'),
+                      Text(_cpu, style: const TextStyle(fontWeight: FontWeight.w800, fontFeatures: [FontFeature.tabularFigures()])),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: reyeeCard(
+                  child: Column(
+                    children: [
+                      RingGauge(value: double.tryParse(_mem.replaceAll('%', '')) ?? 0, label: 'Memory', color: reyeeCyan),
+                      Text(_mem, style: const TextStyle(fontWeight: FontWeight.w800, fontFeatures: [FontFeature.tabularFigures()])),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
           Row(
             children: [
-              Expanded(child: _stat('Clients', _clientCount, Icons.devices_outlined)),
-              const SizedBox(width: 10),
               Expanded(child: _stat('Mesh nodes', _meshCount, Icons.hub_outlined)),
               const SizedBox(width: 10),
               Expanded(child: _stat('CPU temp', _cpuTemp, Icons.thermostat_outlined)),
-            ],
-          ),
-          const SizedBox(height: 2),
-          Row(
-            children: [
-              Expanded(child: _stat('CPU usage', _cpu, Icons.memory_outlined)),
-              const SizedBox(width: 10),
-              Expanded(child: _stat('Memory', _mem, Icons.storage_outlined)),
               const SizedBox(width: 10),
               Expanded(child: _stat('Load 1m', _loadAvg, Icons.show_chart_outlined)),
             ],
           ),
+          sectionTitle('CPU trend, sampled while the app is open'),
+          reyeeCard(child: Sparkline(values: _cpuSamples)),
+          sectionTitle('Topology'),
+          if (_topoChildren.isEmpty)
+            reyeeCard(child: Text(_loading ? 'Loading...' : 'No mesh child nodes. This router is the only node.'))
+          else
+            reyeeCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.router_outlined, color: reyeeBlue),
+                      SizedBox(width: 8),
+                      Expanded(child: Text('Main router', style: TextStyle(fontWeight: FontWeight.w800))),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  for (final child in _topoChildren) _topoRow(child, 0),
+                  const SizedBox(height: 8),
+                  const Text('Lines are connections from the topology data only. No signal values are shown because the router does not report mesh signal strength.', style: TextStyle(color: reyeeMuted, fontSize: 12, height: 1.45)),
+                ],
+              ),
+            ),
           sectionTitle('WiFi networks'),
           if (_ssids.isEmpty)
             reyeeCard(child: Text(_loading ? 'Loading...' : 'No WiFi networks returned by the router.'))
@@ -807,6 +957,33 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _topoRow(dynamic node, int level) {
+    List<dynamic> kids = const [];
+    String name = 'Mesh node';
+    if (node is Map) {
+      name = str(node['hostName'] ?? node['hostname'] ?? node['name'] ?? node['mac'], 'Mesh node');
+      final c = node['childList'];
+      if (c is List) kids = c;
+      if (c is Map) kids = c.values.toList();
+    }
+    return Padding(
+      padding: EdgeInsets.only(left: level * 16, top: 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.circle, size: 10, color: reyeeCyan),
+              const SizedBox(width: 8),
+              Expanded(child: Text(name, style: const TextStyle(fontWeight: FontWeight.w700))),
+            ],
+          ),
+          for (final k in kids) _topoRow(k, level + 1),
+        ],
+      ),
+    );
+  }
+
   Widget _stat(String label, String value, IconData icon) {
     return reyeeCard(
       child: Column(
@@ -837,6 +1014,8 @@ class _DevicesScreenState extends State<DevicesScreen> {
   String? _error;
   String _query = '';
   List<Map<String, dynamic>> _clients = [];
+  Map<String, dynamic> _nicks = {};
+  Map<String, dynamic> _hist = {};
 
   @override
   void initState() {
@@ -869,8 +1048,20 @@ class _DevicesScreenState extends State<DevicesScreen> {
           return merged;
         }).toList();
       } catch (_) {}
+      for (final c in clients) {
+        final mac = (c['mac'] ?? '').toString();
+        if (mac.isNotEmpty) {
+          await LocalStore.recordSeen(mac, str(c['hostName'] ?? c['deviceName'], 'Unknown device'));
+        }
+      }
+      final nicks = await LocalStore.nicknames();
+      final hist = await LocalStore.history();
       if (!mounted) return;
-      setState(() => _clients = clients);
+      setState(() {
+        _clients = clients;
+        _nicks = nicks;
+        _hist = hist;
+      });
     } on SessionExpiredException {
       widget.onSessionExpired();
     } catch (e) {
@@ -1011,10 +1202,77 @@ class _DevicesScreenState extends State<DevicesScreen> {
     );
   }
 
+  String _localName(Map<String, dynamic> c) {
+    final mac = (c['mac'] ?? '').toString().toUpperCase();
+    final n = _nicks[mac];
+    if (n is Map && n['name'] != null && n['name'].toString().isNotEmpty) return n['name'].toString();
+    return str(c['hostName'] ?? c['deviceName'], 'Unknown device');
+  }
+
+  Future<void> _deviceSheet(Map<String, dynamic> c) async {
+    final mac = (c['mac'] ?? '').toString().toUpperCase();
+    final n = _nicks[mac] is Map ? Map<String, dynamic>.from(_nicks[mac] as Map) : <String, dynamic>{};
+    final h = _hist[mac] is Map ? Map<String, dynamic>.from(_hist[mac] as Map) : <String, dynamic>{};
+    final nameC = TextEditingController(text: (n['name'] ?? '').toString());
+    final roomC = TextEditingController(text: (n['room'] ?? '').toString());
+    final groupC = TextEditingController(text: (n['group'] ?? '').toString());
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom, left: 20, right: 20, top: 20),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(_localName(c), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+              Text('IP ${str(c['ip'])} · MAC ${str(c['mac'])}', style: const TextStyle(color: reyeeMuted)),
+              if (c['rssi'] != null) Text('Signal ${signalLabel(c['rssi'])}', style: const TextStyle(color: reyeeMuted)),
+              if (c['ssid'] != null) Text('WiFi ${str(c['ssid'])}', style: const TextStyle(color: reyeeMuted)),
+              const SizedBox(height: 6),
+              Text('Local history: first seen ${h['firstSeen'] is num ? DateTime.fromMillisecondsSinceEpoch((h['firstSeen'] as num).toInt()).toString() : '-'}, sessions ${str(h['sessions'], '0')}.', style: const TextStyle(color: reyeeMuted, fontSize: 12, height: 1.45)),
+              const SizedBox(height: 12),
+              TextField(controller: nameC, decoration: const InputDecoration(labelText: 'Local nickname (local only, not saved on the router)')),
+              const SizedBox(height: 10),
+              TextField(controller: roomC, decoration: const InputDecoration(labelText: 'Room (local only)')),
+              const SizedBox(height: 10),
+              TextField(controller: groupC, decoration: const InputDecoration(labelText: 'Group (local only)')),
+              const SizedBox(height: 12),
+              FilledButton(
+                onPressed: () async {
+                  await LocalStore.setNickname(mac, name: nameC.text.trim(), room: roomC.text.trim(), group: groupC.text.trim());
+                  final nicks = await LocalStore.nicknames();
+                  if (mounted) setState(() => _nicks = nicks);
+                  if (ctx.mounted) Navigator.pop(ctx);
+                  showMsg(context, 'Local nickname saved on this phone only.');
+                },
+                child: const Text('Save local nickname'),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(child: OutlinedButton(onPressed: () => _bandwidth(c), child: const Text('Limit'))),
+                  const SizedBox(width: 10),
+                  Expanded(child: OutlinedButton(onPressed: () => _setBlock(c, c['internetaccess'].toString() != '0'), child: Text(c['internetaccess'].toString() == '0' ? 'Allow' : 'Block'))),
+                ],
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _deviceCard(Map<String, dynamic> c) {
     final blocked = c['internetaccess'].toString() == '0';
-    final name = str(c['hostName'] ?? c['deviceName'], 'Unknown device');
-    return reyeeCard(
+    final name = _localName(c);
+    return InkWell(
+      onTap: () => _deviceSheet(c),
+      borderRadius: BorderRadius.circular(26),
+      child: reyeeCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1051,6 +1309,7 @@ class _DevicesScreenState extends State<DevicesScreen> {
           ),
         ],
       ),
+    ),
     );
   }
 }
@@ -1649,8 +1908,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _ledToggle() async {
     final next = _led == 'on' ? 'off' : 'on';
+    var savedList = <dynamic>[];
     try {
-      await widget.api.post('/api/v1/lua/LED/setLed', {'led_all': next, 'LedConfigList': []});
+      final led = await widget.api.get('/api/v1/lua/LED/devLed');
+      final ld = dataOf(led);
+      if (ld is Map && ld['LedConfigList'] is List) savedList = ld['LedConfigList'] as List;
+    } catch (_) {}
+    try {
+      await widget.api.post('/api/v1/lua/LED/setLed', {'led_all': next, 'LedConfigList': savedList});
       await _load();
       showMsg(context, 'LED set to $next.');
     } on SessionExpiredException {
@@ -1720,6 +1985,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
         padding: const EdgeInsets.all(16),
         children: [
           errorBanner(_error),
+          sectionTitle('More'),
+          reyeeCard(
+            child: Column(
+              children: [
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Advanced router settings', style: TextStyle(fontWeight: FontWeight.w800)),
+                  subtitle: const Text('Parental control, radio, mesh, network, IPv6, system, MAC filter, IPTV', style: TextStyle(color: reyeeMuted)),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => AdvancedScreen(api: widget.api, onSessionExpired: widget.onSessionExpired))),
+                ),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Local insights', style: TextStyle(fontWeight: FontWeight.w800)),
+                  subtitle: const Text('Charts, device history, phone speed test, local alerts, weekly report, offline cache', style: TextStyle(color: reyeeMuted)),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => LocalScreen(api: widget.api, onSessionExpired: widget.onSessionExpired))),
+                ),
+              ],
+            ),
+          ),
           sectionTitle('Network'),
           reyeeCard(
             child: Column(

@@ -20,27 +20,12 @@ jobs:
           channel: stable
       - name: Download Gradle wrapper jar
         run: curl -L -o android/gradle/wrapper/gradle-wrapper.jar https://raw.githubusercontent.com/gradle/gradle/v9.3.1/gradle/wrapper/gradle-wrapper.jar
-      - name: Generate launcher icons (connector push cannot carry PNG files)
-        run: |
-          python3 - <<'PY'
-          import struct, zlib, os
-          def png(w, h, rgb):
-              def chunk(t, data):
-                  c = t + data
-                  return struct.pack(">I", len(data)) + c + struct.pack(">I", zlib.crc32(c) & 0xffffffff)
-              raw = b"".join(b"\x00" + bytes(rgb) * w for _ in range(h))
-              return b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0)) + chunk(b"IDAT", zlib.compress(raw)) + chunk(b"IEND", b"")
-          for folder, size in [("mipmap-mdpi",48),("mipmap-hdpi",72),("mipmap-xhdpi",96),("mipmap-xxhdpi",144),("mipmap-xxxhdpi",192)]:
-              p = f"android/app/src/main/res/{folder}"
-              os.makedirs(p, exist_ok=True)
-              open(f"{p}/ic_launcher.png","wb").write(png(size,size,(47,124,246)))
-          PY
       - run: flutter pub get
-      - run: flutter build apk --release
+      - run: flutter build apk --release --split-per-abi
       - name: Release APK
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.0.0-build-${{ github.run_number }}
-          name: MA3063 Control v1.0.0 build ${{ github.run_number }}
-          files: build/app/outputs/flutter-apk/app-release.apk
+          tag_name: build-${{ github.run_number }}
+          name: MA3063 Control build ${{ github.run_number }}
+          files: build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
           generate_release_notes: true
