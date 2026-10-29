@@ -3,26 +3,48 @@ import 'package:flutter/services.dart';
 
 /// Light futuristic theme tokens. Light only, no dark theme, no
 /// version label anywhere in the UI.
-const Color appBlue = Color(0xFF2F7CF6);
-const Color appCyan = Color(0xFF00C2FF);
-const Color appInk = Color(0xFF0F172A);
+/// Canonical colour tokens. One accent only (primary blue) plus
+/// neutrals plus semantic colours. Light theme, checked for contrast:
+/// main text on background is near black on near white, secondary
+/// text is dark slate, muted is used only for small supporting text.
+/// Legacy app* and reyee* names below are aliases of these tokens,
+/// so there is exactly one set of values in the codebase.
+const Color appBackground = Color(0xFFF2F6FB);
+const Color appSurface = Color(0xFFFFFFFF);
+const Color appOutline = Color(0xFFD9E2EC);
+const Color appOutlineSoft = Color(0xFFE2E8F0);
+const Color appPrimary = Color(0xFF2F7CF6);
+const Color appPrimaryDeep = Color(0xFF0A1E46);
+const Color appPrimaryContainer = Color(0xFFDCE9FD);
+const Color appOnPrimary = Color(0xFFFFFFFF);
+const Color appOnPrimaryContainer = Color(0xFF173A6B);
+const Color appText = Color(0xFF0F172A);
+const Color appTextSecondary = Color(0xFF475569);
 const Color appMuted = Color(0xFF64748B);
-const Color appBg = Color(0xFFEDF3FA);
-const Color appCard = Color(0xFFFFFFFF);
-const Color appBorder = Color(0xFFDCE7F2);
-const Color appSurfaceLow = Color(0xFFF7FAFD);
+const Color appSuccess = Color(0xFF15803D);
+const Color appSuccessBg = Color(0xFFDCFCE7);
+const Color appWarning = Color(0xFFB45309);
+const Color appWarningBg = Color(0xFFFEF3C7);
+const Color appDanger = Color(0xFFB42318);
+const Color appDangerBg = Color(0xFFFEECEB);
+// Legacy aliases, kept so existing screens need no rename.
+const Color appBlue = appPrimary;
+const Color appInk = appText;
+const Color appBg = appBackground;
+const Color appCard = appSurface;
+const Color appBorder = appOutlineSoft;
+const Color appSurfaceLow = Color(0xFFEAF1F8);
 const Color appSurfaceContainer = Color(0xFFEAF1F8);
-const Color appSurfaceHigh = Color(0xFFE2EBF5);
-const Color appSecondaryContainer = Color(0xFFDCE9FD);
-const Color appOnSecondary = Color(0xFF173A6B);
-const Color appOutline = Color(0xFFCBD5E1);
-const Color appOutlineVariant = Color(0xFFE2E8F0);
-const Color appGreen = Color(0xFF15803D);
-const Color appGreenBg = Color(0xFFDCFCE7);
-const Color appAmber = Color(0xFFB45309);
-const Color appAmberBg = Color(0xFFFEF3C7);
-const Color appRed = Color(0xFFB42318);
-const Color appRedBg = Color(0xFFFEECEB);
+const Color appSurfaceHigh = Color(0xFFEAF1F8);
+const Color appSecondaryContainer = appPrimaryContainer;
+const Color appOnSecondary = appOnPrimaryContainer;
+const Color appOutlineVariant = appOutlineSoft;
+const Color appGreen = appSuccess;
+const Color appGreenBg = appSuccessBg;
+const Color appAmber = appWarning;
+const Color appAmberBg = appWarningBg;
+const Color appRed = appDanger;
+const Color appRedBg = appDangerBg;
 
 /// Content card: white at full opacity, hairline border, no shadow.
 /// Depth comes from the page background versus the white card.
@@ -39,6 +61,7 @@ class GlassCard extends StatelessWidget {
         color: appCard,
         border: Border.all(color: appOutlineVariant),
         borderRadius: BorderRadius.circular(24),
+        boxShadow: const [BoxShadow(color: Color(0x140F172A), blurRadius: 12, offset: Offset(0, 4))],
       ),
       child: Padding(padding: padding, child: child),
     );
@@ -48,9 +71,9 @@ class GlassCard extends StatelessWidget {
 Widget pillChip(String text, {bool active = false, Color? color}) {
   final c = color ?? appBlue;
   return Container(
-    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
     decoration: BoxDecoration(
-      color: active ? c : const Color(0xFFEFF5FF),
+      color: active ? c : appSurfaceContainer,
       borderRadius: BorderRadius.circular(999),
     ),
     child: Text(
@@ -89,7 +112,7 @@ class SegmentedControl<T> extends StatelessWidget {
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
                   curve: Curves.easeOut,
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   decoration: BoxDecoration(
                     color: opt.$1 == value ? appSecondaryContainer : Colors.transparent,
                     borderRadius: BorderRadius.circular(999),
@@ -156,7 +179,7 @@ Widget skeletonCard() {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SkeletonBlock(width: 160),
-        SizedBox(height: 10),
+        SizedBox(height: 8),
         SkeletonBlock(),
         SizedBox(height: 8),
         SkeletonBlock(width: 220),
@@ -173,9 +196,9 @@ Widget emptyState(String title, String body, String actionLabel, VoidCallback on
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Icon(Icons.inbox_outlined, size: 40, color: appMuted),
-        const SizedBox(height: 10),
+        const SizedBox(height: 8),
         Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: appInk)),
-        const SizedBox(height: 6),
+        const SizedBox(height: 8),
         Text(body, style: const TextStyle(color: appMuted, height: 1.45)),
         const SizedBox(height: 12),
         OutlinedButton(onPressed: onAction, child: Text(actionLabel)),

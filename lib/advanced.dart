@@ -122,30 +122,30 @@ class _BehaviorScreenState extends State<BehaviorScreen> {
               children: [
                 if (dialogError != null) Text(dialogError!, style: const TextStyle(color: appRed)),
                 TextField(controller: name, decoration: const InputDecoration(labelText: 'Rule name')),
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
                 TextField(controller: mac, decoration: const InputDecoration(labelText: 'Device MAC')),
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
                 SegmentedControl<String>(
                   options: const [('REJECT', 'Block'), ('ACCEPT', 'Allow')],
                   value: target,
                   onChanged: (v) => setD(() => target = v),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
                 SegmentedControl<String>(
                   options: const [('ip', 'By website list'), ('mac', 'By device list')],
                   value: by,
                   onChanged: (v) => setD(() => by = v),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
                 if (by == 'ip')
                   ChipInput(values: urls, onChanged: (v) => setD(() => urls = v), addLabel: 'Add a blocked website', hint: 'example.com')
                 else
                   ChipInput(values: hosts, onChanged: (v) => setD(() => hosts = v), addLabel: 'Add a hostname', hint: 'example.com'),
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
                 TimePickerRow(label: 'Start time', value: startTod, onChanged: (v) => setD(() => startTod = v), onClear: () => setD(() => startTod = null)),
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
                 TimePickerRow(label: 'End time', value: endTod, onChanged: (v) => setD(() => endTod = v), onClear: () => setD(() => endTod = null)),
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
                 WeekdayChips(selected: days.toSet(), onChanged: (v) => setD(() => days = v.toList())),
               ],
             ),
@@ -255,18 +255,18 @@ class _BehaviorScreenState extends State<BehaviorScreen> {
                           pillChip(BehaviorTarget.fromCode(r['target']).label, active: str(r['target']) == 'REJECT', color: str(r['target']) == 'REJECT' ? appRed : appGreen),
                         ],
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 8),
                       Text('MAC ${str(r['mac'])}', style: const TextStyle(color: appMuted)),
                       if (str(r['urlString'], '').isNotEmpty) Text('Websites: ${str(r['urlString'])}', style: const TextStyle(color: appMuted)),
                       if (str(r['hostnames'], '').isNotEmpty) Text('Hostnames: ${str(r['hostnames'])}', style: const TextStyle(color: appMuted)),
                       Text('Days: ${Weekday.summary(r['weekdays'] is List ? (r['weekdays'] as List).map((e) => e.toString()).toList() : const <String>[])}', style: const TextStyle(color: appMuted)),
                       if (str(r['startTime'], '').isNotEmpty || str(r['endTime'], '').isNotEmpty)
                         Text('Time ${str(r['startTime'])} to ${str(r['endTime'])}', style: const TextStyle(color: appMuted)),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 8),
                       Row(
                         children: [
                           Expanded(child: OutlinedButton(onPressed: () => _edit(r), child: const Text('Edit'))),
-                          const SizedBox(width: 10),
+                          const SizedBox(width: 8),
                           Expanded(child: OutlinedButton(onPressed: () => _delete(r), child: const Text('Delete'))),
                         ],
                       ),
@@ -459,7 +459,7 @@ class _RadioScreenState extends State<RadioScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           choiceRow('Channel', channelLabel(r['channel'].toString(), is5g: str(r['type']).contains('5'), freq: _chFreq[r['channel'].toString()]), null, () async {
             final is5 = str(r['type']).contains('5');
             final base = channels.isEmpty ? channelOptions(is5g: is5) : channels;
@@ -471,7 +471,7 @@ class _RadioScreenState extends State<RadioScreen> {
             final picked = await showChoiceSheet<String>(context, title: 'Channel', options: opts, current: r['channel'].toString());
             if (picked != null) setState(() => _radios[i]['channel'] = picked);
           }),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           choiceRow('Bandwidth', bandwidthLabel(r['bandWidth'].toString(), is5g: str(r['type']).contains('5')), null, () async {
             final is5 = str(r['type']).contains('5');
             final codes = is5 ? ['auto', 'auto_160', '20', '40', '80', '160'] : ['20', '40', '20_40'];
@@ -480,9 +480,9 @@ class _RadioScreenState extends State<RadioScreen> {
             final picked = await showChoiceSheet<String>(context, title: 'Bandwidth', options: opts, current: r['bandWidth'].toString());
             if (picked != null) setState(() => _radios[i]['bandWidth'] = picked);
           }),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           const Text('Signal strength', style: TextStyle(fontWeight: FontWeight.w600)),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: SegmentedControl<TxPower>(
@@ -492,9 +492,9 @@ class _RadioScreenState extends State<RadioScreen> {
             ),
           ),
           Text(TxPower.fromCode(r['txpower']).description, style: const TextStyle(color: appMuted, fontSize: 12)),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           const Text('WiFi generation', style: TextStyle(fontWeight: FontWeight.w600)),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           SegmentedControl<String>(
             options: const [('11ax', 'WiFi 6'), ('11ac', 'WiFi 5'), ('11n', 'WiFi 4')],
             value: (r['hwmode'] ?? '11ax').toString(),
@@ -725,9 +725,9 @@ class _MeshScreenState extends State<MeshScreen> {
                     onChanged: (v) => setState(() => _mode = v.code),
                   ),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 8),
                 Text(MeshMode.fromCode(_mode).description, style: const TextStyle(color: appMuted, fontSize: 12)),
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
                 FilledButton(onPressed: _saveMode, child: const Text('Save mesh mode')),
               ],
             ),
@@ -738,9 +738,9 @@ class _MeshScreenState extends State<MeshScreen> {
               children: [
                 SwitchListTile(value: _roaming, onChanged: (v) => setState(() => _roaming = v), title: const Text('Roaming enabled')),
                 RoamingSlider(label: '2.4 GHz threshold', dbm: _t24i, onChanged: (v) => setState(() => _t24i = v)),
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
                 RoamingSlider(label: '5 GHz threshold', dbm: _t5i, onChanged: (v) => setState(() => _t5i = v)),
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
                 FilledButton(onPressed: _saveRoaming, child: const Text('Save roaming')),
               ],
             ),
@@ -760,9 +760,9 @@ class _MeshScreenState extends State<MeshScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text('This starts the stock mesh pairing step. A real mesh device must be nearby, and the result is checked by node count, not assumed.', style: TextStyle(color: appMuted, height: 1.45)),
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
                 FilledButton(onPressed: _startPairing, child: const Text('Start mesh pairing')),
-                if (_pairResult.isNotEmpty) ...[const SizedBox(height: 10), Text(_pairResult, style: const TextStyle(height: 1.45))],
+                if (_pairResult.isNotEmpty) ...[const SizedBox(height: 8), Text(_pairResult, style: const TextStyle(height: 1.45))],
               ],
             ),
           ),
@@ -781,7 +781,7 @@ class _MeshScreenState extends State<MeshScreen> {
         children: [
           Row(
             children: [
-              const Icon(Icons.circle, size: 10, color: appCyan),
+              const Icon(Icons.circle, size: 10, color: appBlue),
               const SizedBox(width: 8),
               Expanded(child: Text(_nodeName(node), style: const TextStyle(fontWeight: FontWeight.w700))),
               if (node is Map && node['mac'] != null) Text(str(node['mac']), style: const TextStyle(color: appMuted, fontSize: 12)),

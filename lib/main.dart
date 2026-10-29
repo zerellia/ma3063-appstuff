@@ -17,11 +17,11 @@ void main() {
   runApp(const MaApp());
 }
 
-const Color reyeeBlue = Color(0xFF2F7CF6);
-const Color reyeeCyan = Color(0xFF00C2FF);
-const Color reyeeBg = Color(0xFFEDF3FA);
-const Color reyeeInk = Color(0xFF0F172A);
-const Color reyeeMuted = Color(0xFF64748B);
+const Color reyeeBlue = appBlue;
+
+const Color reyeeBg = appBg;
+const Color reyeeInk = appInk;
+const Color reyeeMuted = appMuted;
 
 class MaApp extends StatelessWidget {
   const MaApp({super.key});
@@ -34,12 +34,6 @@ class MaApp extends StatelessWidget {
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(seedColor: reyeeBlue, brightness: Brightness.light),
         scaffoldBackgroundColor: reyeeBg,
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Colors.white,
-          foregroundColor: reyeeInk,
-          elevation: 0,
-          centerTitle: false,
-        ),
         cardTheme: CardThemeData(
           color: Colors.white,
           elevation: 0,
@@ -52,7 +46,7 @@ class MaApp extends StatelessWidget {
           enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
         ),
         navigationBarTheme: NavigationBarThemeData(
-          backgroundColor: const Color(0xFFEAF1F8),
+          backgroundColor: Colors.white,
           indicatorColor: const Color(0xFFDCE9FD),
           labelTextStyle: WidgetStateProperty.resolveWith((states) {
             if (states.contains(WidgetState.selected)) return const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF173A6B));
@@ -63,11 +57,20 @@ class MaApp extends StatelessWidget {
             return const IconThemeData(color: Color(0xFF64748B), size: 24);
           }),
         ),
+        outlinedButtonTheme: OutlinedButtonThemeData(
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size.fromHeight(48),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+          ),
+        ),
+        textButtonTheme: TextButtonThemeData(
+          style: TextButton.styleFrom(minimumSize: const Size(48, 48)),
+        ),
         filledButtonTheme: FilledButtonThemeData(
           style: FilledButton.styleFrom(
             backgroundColor: reyeeBlue,
             foregroundColor: Colors.white,
-            minimumSize: const Size.fromHeight(50),
+            minimumSize: const Size.fromHeight(48),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
           ),
         ),
@@ -84,6 +87,7 @@ Widget reyeeCard({required Widget child, EdgeInsets padding = const EdgeInsets.a
       color: Colors.white,
       border: Border.all(color: const Color(0xFFE2E8F0)),
       borderRadius: BorderRadius.circular(24),
+      boxShadow: const [BoxShadow(color: Color(0x140F172A), blurRadius: 12, offset: Offset(0, 4))],
     ),
     child: Padding(padding: padding, child: child),
   );
@@ -91,14 +95,29 @@ Widget reyeeCard({required Widget child, EdgeInsets padding = const EdgeInsets.a
 
 Widget sectionTitle(String title) {
   return Padding(
-    padding: const EdgeInsets.fromLTRB(4, 12, 4, 8),
-    child: Text(title.toUpperCase(), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, letterSpacing: 0.4, color: reyeeMuted)),
+    padding: const EdgeInsets.fromLTRB(0, 16, 0, 8),
+    child: Text(title.toUpperCase(), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, letterSpacing: 0.8, color: reyeeMuted)),
+  );
+}
+
+Widget bandPill(String band) {
+  final is5 = band.contains('5');
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+    decoration: BoxDecoration(
+      color: is5 ? const Color(0xFFDCE9FD) : const Color(0xFFE6F4EA),
+      borderRadius: BorderRadius.circular(999),
+    ),
+    child: Text(
+      is5 ? '5G' : '2.4G',
+      style: TextStyle(color: is5 ? const Color(0xFF173A6B) : const Color(0xFF137333), fontWeight: FontWeight.w700, fontSize: 11),
+    ),
   );
 }
 
 Widget infoRow(String label, String value) {
   return Padding(
-    padding: const EdgeInsets.symmetric(vertical: 5),
+    padding: const EdgeInsets.symmetric(vertical: 4),
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -301,7 +320,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 width: 72,
                 height: 72,
                 decoration: const BoxDecoration(
-                  gradient: LinearGradient(colors: [reyeeBlue, reyeeCyan], begin: Alignment.topLeft, end: Alignment.bottomRight),
+                  gradient: const LinearGradient(colors: [Color(0xFF0A1E46), reyeeBlue], begin: Alignment.topLeft, end: Alignment.bottomRight),
                   borderRadius: BorderRadius.all(Radius.circular(24)),
                 ),
                 child: const Icon(Icons.router_outlined, color: Colors.white, size: 38),
@@ -312,15 +331,15 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 24),
               errorBanner(_error),
               const Text('Router IP', style: TextStyle(fontWeight: FontWeight.w600)),
-              const SizedBox(height: 6),
+              const SizedBox(height: 8),
               TextField(controller: _ip, keyboardType: TextInputType.text, decoration: const InputDecoration(hintText: '192.168.1.1')),
-              const SizedBox(height: 14),
+              const SizedBox(height: 16),
               const Text('Username', style: TextStyle(fontWeight: FontWeight.w600)),
-              const SizedBox(height: 6),
+              const SizedBox(height: 8),
               TextField(controller: _user, decoration: const InputDecoration(hintText: 'admin')),
-              const SizedBox(height: 14),
+              const SizedBox(height: 16),
               const Text('Password', style: TextStyle(fontWeight: FontWeight.w600)),
-              const SizedBox(height: 6),
+              const SizedBox(height: 8),
               TextField(
                 controller: _pass,
                 obscureText: !_showPass,
@@ -495,31 +514,29 @@ class _MainShellState extends State<MainShell> {
     ];
     return Scaffold(
       body: SafeArea(
-        top: true,
-        bottom: false,
         child: IndexedStack(index: _index, children: screens),
       ),
-      bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
-          color: Color(0xFFEAF1F8),
-          border: Border(top: BorderSide(color: Color(0xFFE2E8F0))),
-        ),
-        child: NavigationBar(
-          backgroundColor: const Color(0xFFEAF1F8),
-          indicatorColor: const Color(0xFFDCE9FD),
-          selectedIndex: _index,
-          onDestinationSelected: (i) {
-            HapticFeedback.selectionClick();
-            setState(() => _index = i);
-          },
-          destinations: const [
-            NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Home'),
-            NavigationDestination(icon: Icon(Icons.devices_outlined), selectedIcon: Icon(Icons.devices), label: 'Devices'),
-            NavigationDestination(icon: Icon(Icons.wifi_outlined), selectedIcon: Icon(Icons.wifi), label: 'WiFi'),
-            NavigationDestination(icon: Icon(Icons.health_and_safety_outlined), selectedIcon: Icon(Icons.health_and_safety), label: 'Tools'),
-            NavigationDestination(icon: Icon(Icons.settings_outlined), selectedIcon: Icon(Icons.settings), label: 'Settings'),
-          ],
-        ),
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Divider(height: 1, thickness: 1, color: Color(0xFFE2E8F0)),
+          NavigationBar(
+            backgroundColor: Colors.white,
+            indicatorColor: const Color(0xFFDCE9FD),
+            selectedIndex: _index,
+            onDestinationSelected: (i) {
+              HapticFeedback.selectionClick();
+              setState(() => _index = i);
+            },
+            destinations: const [
+              NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Home'),
+              NavigationDestination(icon: Icon(Icons.devices_outlined), selectedIcon: Icon(Icons.devices), label: 'Devices'),
+              NavigationDestination(icon: Icon(Icons.wifi_outlined), selectedIcon: Icon(Icons.wifi), label: 'WiFi'),
+              NavigationDestination(icon: Icon(Icons.health_and_safety_outlined), selectedIcon: Icon(Icons.health_and_safety), label: 'Tools'),
+              NavigationDestination(icon: Icon(Icons.settings_outlined), selectedIcon: Icon(Icons.settings), label: 'Settings'),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -814,7 +831,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     Row(
                       children: [
                         const Icon(Icons.router_outlined, color: Colors.white, size: 28),
-                        const SizedBox(width: 10),
+                        const SizedBox(width: 8),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -854,12 +871,12 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               Expanded(
                 child: reyeeCard(
                   child: Column(
                     children: [
-                      RingGauge(value: double.tryParse(_mem.replaceAll('%', '')) ?? 0, label: 'Memory', color: reyeeCyan),
+                      RingGauge(value: double.tryParse(_mem.replaceAll('%', '')) ?? 0, label: 'Memory', color: reyeeBlue),
                       Text(_mem, style: const TextStyle(fontWeight: FontWeight.w700, fontFeatures: [FontFeature.tabularFigures()])),
                     ],
                   ),
@@ -870,9 +887,9 @@ class _HomeScreenState extends State<HomeScreen> {
           Row(
             children: [
               Expanded(child: _stat('Mesh nodes', _meshCount, Icons.hub_outlined)),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               Expanded(child: _stat('CPU temp', _cpuTemp, Icons.thermostat_outlined)),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               Expanded(child: _stat('Load 1m', _loadAvg, Icons.show_chart_outlined)),
             ],
           ),
@@ -911,7 +928,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Row(
                   children: [
                     const Icon(Icons.wifi, color: reyeeBlue),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: 8),
                     Expanded(child: Text(s['name'] ?? '-', style: const TextStyle(fontWeight: FontWeight.w600))),
                     Text(s['on'] ?? '-', style: const TextStyle(color: reyeeMuted)),
                   ],
@@ -948,7 +965,7 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: 8),
           OutlinedButton.icon(onPressed: _load, icon: const Icon(Icons.refresh), label: const Text('Refresh')),
           const SizedBox(height: 8),
-          const Text('No auto refresh. Tap Refresh to update, the same rule as the web panel.', style: TextStyle(color: reyeeMuted), textAlign: TextAlign.center),
+          const Text('No auto refresh. Tap Refresh to update, the same rule as the web panel.', style: TextStyle(color: reyeeMuted)),
         ],
       ),
     );
@@ -988,7 +1005,7 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           Row(
             children: [
-              const Icon(Icons.circle, size: 10, color: reyeeCyan),
+              const Icon(Icons.circle, size: 10, color: reyeeBlue),
               const SizedBox(width: 8),
               Expanded(child: Text(name, style: const TextStyle(fontWeight: FontWeight.w700))),
             ],
@@ -1214,7 +1231,7 @@ class _DevicesScreenState extends State<DevicesScreen> {
           ),
           if (!_loading && shown.isNotEmpty)
             SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              padding: EdgeInsets.fromLTRB(16, 0, 16, 96 + MediaQuery.of(context).padding.bottom),
               sliver: SliverList.builder(
                 itemCount: shown.length,
                 itemBuilder: (context, i) => KeyedSubtree(
@@ -1257,13 +1274,13 @@ class _DevicesScreenState extends State<DevicesScreen> {
               Text('IP ${str(c['ip'])} · MAC ${str(c['mac'])}', style: const TextStyle(color: reyeeMuted)),
               if (c['rssi'] != null) Text('Signal ${signalLabel(c['rssi'])}', style: const TextStyle(color: reyeeMuted)),
               if (c['ssid'] != null) Text('WiFi ${str(c['ssid'])}', style: const TextStyle(color: reyeeMuted)),
-              const SizedBox(height: 6),
+              const SizedBox(height: 8),
               Text('Local history: first seen ${h['firstSeen'] is num ? formatDisplayDateTimeMs((h['firstSeen'] as num).toInt()) : '-'}, sessions ${str(h['sessions'], '0')}.', style: const TextStyle(color: reyeeMuted, fontSize: 12, height: 1.45)),
               const SizedBox(height: 12),
               TextField(controller: nameC, decoration: const InputDecoration(labelText: 'Local nickname (local only, not saved on the router)')),
-              const SizedBox(height: 10),
+              const SizedBox(height: 8),
               TextField(controller: roomC, decoration: const InputDecoration(labelText: 'Room (local only)')),
-              const SizedBox(height: 10),
+              const SizedBox(height: 8),
               TextField(controller: groupC, decoration: const InputDecoration(labelText: 'Group (local only)')),
               const SizedBox(height: 12),
               FilledButton(
@@ -1276,11 +1293,11 @@ class _DevicesScreenState extends State<DevicesScreen> {
                 },
                 child: const Text('Save local nickname'),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 8),
               Row(
                 children: [
                   Expanded(child: OutlinedButton(onPressed: () => _bandwidth(c), child: const Text('Limit'))),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 8),
                   Expanded(child: OutlinedButton(onPressed: () => _setBlock(c, c['internetaccess'].toString() != '0'), child: Text(c['internetaccess'].toString() == '0' ? 'Allow' : 'Block'))),
                 ],
               ),
@@ -1289,6 +1306,27 @@ class _DevicesScreenState extends State<DevicesScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _signalBars(dynamic rssi) {
+    final v = int.tryParse(rssi.toString());
+    final level = v == null ? 0 : (v >= -50 ? 4 : v >= -60 ? 3 : v >= -70 ? 2 : 1);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        for (var i = 0; i < 4; i++)
+          Container(
+            width: 4,
+            height: (6 + i * 4).toDouble(),
+            margin: const EdgeInsets.only(right: 2),
+            decoration: BoxDecoration(
+              color: i < level ? reyeeBlue : const Color(0xFFCBD5E1),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+      ],
     );
   }
 
@@ -1304,9 +1342,16 @@ class _DevicesScreenState extends State<DevicesScreen> {
         children: [
           Row(
             children: [
+              Container(
+                width: 10,
+                height: 10,
+                decoration: BoxDecoration(color: blocked ? Colors.red : const Color(0xFF16A34A), shape: BoxShape.circle),
+              ),
+              const SizedBox(width: 8),
               Icon(blocked ? Icons.block_outlined : Icons.devices_outlined, color: blocked ? Colors.red : reyeeBlue),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               Expanded(child: Text(name, style: const TextStyle(fontWeight: FontWeight.w700))),
+              if (c['rssi'] != null) ...[const SizedBox(width: 8), _signalBars(c['rssi']), const SizedBox(width: 8)],
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(color: blocked ? const Color(0xFFFEECEB) : const Color(0xFFE6F4EA), borderRadius: BorderRadius.circular(20)),
@@ -1320,13 +1365,14 @@ class _DevicesScreenState extends State<DevicesScreen> {
           if (c['ssid'] != null) infoRow('WiFi', str(c['ssid'])),
           if (c['rssi'] != null) infoRow('Signal', signalLabel(c['rssi'])),
           if (c['onlinetime'] != null) infoRow('Online time', formatDuration(c['onlinetime'])),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           Row(
             children: [
               Expanded(child: OutlinedButton(onPressed: () => _bandwidth(c), child: const Text('Limit'))),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               Expanded(
                 child: OutlinedButton(
+                  style: blocked ? null : OutlinedButton.styleFrom(foregroundColor: const Color(0xFFB42318)),
                   onPressed: () => _setBlock(c, !blocked),
                   child: Text(blocked ? 'Allow' : 'Block'),
                 ),
@@ -1406,10 +1452,10 @@ class _WifiScreenState extends State<WifiScreen> {
               children: [
                 if (dialogError != null) ...[
                   Text(dialogError!, style: const TextStyle(color: Color(0xFFB42318))),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 8),
                 ],
                 TextField(controller: name, decoration: const InputDecoration(labelText: 'Network name')),
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
                 choiceRow('Encryption', Encryption.fromCode(enc).label, null, () async {
                   final picked = await showDialog<String>(
                     context: ctx,
@@ -1471,7 +1517,7 @@ class _WifiScreenState extends State<WifiScreen> {
                   if (picked != null) setD(() => enc = picked);
                 }),
                 if (enc != 'open') ...[
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 8),
                   TextField(
                     controller: pass,
                     obscureText: !showPass,
@@ -1580,13 +1626,21 @@ class _WifiScreenState extends State<WifiScreen> {
                 child: Row(
                   children: [
                     const Icon(Icons.wifi, color: reyeeBlue),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: 8),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(str(s['ssidName'], 'Unnamed'), style: const TextStyle(fontWeight: FontWeight.w700)),
-                          Text('${radioBandLabel(s['relatedRadio'])} · ${Encryption.fromCode(str(s['encryptionMode'], authToEncryption(s['auth']))).label} · ${(s['enable'] == 'yes' || s['enable'] == 'true') ? 'On' : 'Off'}', style: const TextStyle(color: reyeeMuted, fontSize: 12)),
+                          Row(
+                            children: [
+                              bandPill(radioBandLabel(s['relatedRadio'])),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text('${Encryption.fromCode(str(s['encryptionMode'], authToEncryption(s['auth']))).label} · ${(s['enable'] == 'yes' || s['enable'] == 'true') ? 'On' : 'Off'}', style: const TextStyle(color: reyeeMuted, fontSize: 12)),
+                              ),
+                            ],
+                          ),
                         ],
                       ),
                     ),
@@ -1754,7 +1808,7 @@ class _ToolsScreenState extends State<ToolsScreen> {
               const Text('Checks WAN port, WAN IP, DNS, internet and LAN. A result only counts as passed when the router confirms it, not just when the call returns.', style: TextStyle(color: reyeeMuted, height: 1.4)),
               const SizedBox(height: 12),
               FilledButton(onPressed: _checking ? null : _runCheck, child: Text(_checking ? 'Checking...' : 'Run network check')),
-              const SizedBox(height: 10),
+              const SizedBox(height: 8),
               OutlinedButton(onPressed: _recoverFailed, child: const Text('Recover failed items')),
               if (_checkResult.isNotEmpty) ...[
                 const SizedBox(height: 12),
@@ -1776,7 +1830,7 @@ class _ToolsScreenState extends State<ToolsScreen> {
                 onChanged: (v) => setState(() => _diagMethod = v ?? 'ping'),
                 decoration: const InputDecoration(labelText: 'Method'),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 8),
               TextField(controller: _diagTarget, decoration: const InputDecoration(labelText: 'Target')),
               const SizedBox(height: 12),
               FilledButton(onPressed: _diagRunning ? null : _runDiagnose, child: Text(_diagRunning ? 'Running...' : 'Run diagnose')),
@@ -1825,25 +1879,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   List<Map<String, dynamic>> _ports = [];
   List<Map<String, dynamic>> _logs = [];
   String _search = '';
-  List<String> _recent = [];
 
   @override
   void initState() {
     super.initState();
     _load();
-    _loadRecent();
-  }
-
-  Future<void> _loadRecent() async {
-    final prefs = await SharedPreferences.getInstance();
-    if (mounted) setState(() => _recent = prefs.getStringList('recent_features') ?? []);
-  }
-
-  Future<void> _recordRecent(String key) async {
-    final prefs = await SharedPreferences.getInstance();
-    final next = [key, ..._recent.where((k) => k != key)].take(3).toList();
-    await prefs.setStringList('recent_features', next);
-    if (mounted) setState(() => _recent = next);
   }
 
   bool _matches(String text) {
@@ -1874,9 +1914,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     ];
   }
 
-  Future<void> _openFeature((String, String, String, IconData, Widget) f) async {
-    await _recordRecent(f.$1);
-    if (!mounted) return;
+  void _openFeature((String, String, String, IconData, Widget) f) {
     Navigator.of(context).push(MaterialPageRoute(builder: (_) => f.$5));
   }
 
@@ -1995,7 +2033,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(controller: name, decoration: const InputDecoration(labelText: 'Rule name')),
-              const SizedBox(height: 10),
+              const SizedBox(height: 8),
               ValueListenableBuilder<String>(
                 valueListenable: proto,
                 builder: (_, v, __) => DropdownButtonFormField<String>(
@@ -2005,11 +2043,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   decoration: const InputDecoration(labelText: 'Protocol'),
                 ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 8),
               TextField(controller: src, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'External port')),
-              const SizedBox(height: 10),
+              const SizedBox(height: 8),
               TextField(controller: ip, decoration: const InputDecoration(labelText: 'Internal IP')),
-              const SizedBox(height: 10),
+              const SizedBox(height: 8),
               TextField(controller: dest, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Internal port')),
             ],
           ),
@@ -2101,7 +2139,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(controller: oldP, obscureText: true, decoration: const InputDecoration(labelText: 'Current password')),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             TextField(controller: newP, obscureText: true, decoration: const InputDecoration(labelText: 'New password')),
           ],
         ),
@@ -2145,21 +2183,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onChanged: (v) => setState(() => _search = v),
           ),
           const SizedBox(height: 12),
-          if (_recent.isNotEmpty) ...[
-            sectionTitle('Recently used'),
-            for (final f in _features().where((f) => _recent.contains(f.$1)))
-              reyeeCard(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                child: ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: Icon(f.$4, color: reyeeBlue),
-                  title: Text(f.$2, style: const TextStyle(fontWeight: FontWeight.w700)),
-                  subtitle: Text(f.$3, style: const TextStyle(color: reyeeMuted, fontSize: 12)),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => _openFeature(f),
-                ),
-              ),
-          ],
           sectionTitle('Router features'),
           for (final f in _features().where((f) => _matches('${f.$2} ${f.$3}')))
             reyeeCard(
@@ -2195,11 +2218,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 infoRow('Mesh', _meshInfo),
                 infoRow('DNS', _dnsInfo),
                 infoRow('IPv6', _ipv6),
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
                 Row(
                   children: [
                     Expanded(child: OutlinedButton(onPressed: () => _wan(true), child: const Text('Connect WAN'))),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: 8),
                     Expanded(child: OutlinedButton(onPressed: () => _wan(false), child: const Text('Disconnect WAN'))),
                   ],
                 ),
@@ -2234,11 +2257,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 Row(
                   children: [
                     Expanded(child: OutlinedButton(onPressed: _ledToggle, child: Text(_led == 'close' ? 'Turn LED on' : 'Turn LED off'))),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: 8),
                     Expanded(child: OutlinedButton(onPressed: _reboot, child: const Text('Restart router'))),
                   ],
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
                 FilledButton(onPressed: _changeAdminPassword, child: const Text('Change admin password')),
               ],
             ),
@@ -2262,7 +2285,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               children: [
                 infoRow('Router IP', widget.routerIp),
                 infoRow('Connector', _connector),
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
                 FilledButton(onPressed: _logout, child: const Text('Log out')),
               ],
             ),

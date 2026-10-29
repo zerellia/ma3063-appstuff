@@ -150,9 +150,8 @@ class _LocalScreenState extends State<LocalScreen> {
       body: CustomScrollView(
         slivers: [
           SliverToBoxAdapter(
-            child: SafeArea(
-              top: true,
-              bottom: false,
+            child: Padding(
+              padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top),
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(12, 0, 12, 0),
                 child: DetailTopBar(title: 'Local insights', subtitle: 'Local only, on this phone'),
@@ -171,7 +170,7 @@ class _LocalScreenState extends State<LocalScreen> {
                 ),
                 if (_loading) skeletonCard(),
                 const Padding(
-                  padding: EdgeInsets.fromLTRB(4, 12, 4, 8),
+                  padding: EdgeInsets.fromLTRB(0, 16, 0, 8),
                   child: Text('Health charts, sampled while the app is open', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: appInk)),
                 ),
                 GlassCard(
@@ -184,7 +183,7 @@ class _LocalScreenState extends State<LocalScreen> {
                       const SizedBox(height: 12),
                       const Text('Memory %', style: TextStyle(fontWeight: FontWeight.w700)),
                       const SizedBox(height: 8),
-                      RepaintBoundary(child: Sparkline(values: mems, color: appCyan)),
+                      RepaintBoundary(child: Sparkline(values: mems, color: appMuted)),
                       const SizedBox(height: 12),
                       const Text('CPU temperature', style: TextStyle(fontWeight: FontWeight.w700)),
                       const SizedBox(height: 8),
@@ -195,7 +194,7 @@ class _LocalScreenState extends State<LocalScreen> {
                   ),
                 ),
                 const Padding(
-                  padding: EdgeInsets.fromLTRB(4, 12, 4, 8),
+                  padding: EdgeInsets.fromLTRB(0, 16, 0, 8),
                   child: Text('Phone speed test', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: appInk)),
                 ),
                 GlassCard(
@@ -203,7 +202,7 @@ class _LocalScreenState extends State<LocalScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text('This measures the phone internet speed, not the router WAN speed.', style: TextStyle(color: appMuted, height: 1.45)),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 8),
                       ValueListenableBuilder<bool>(
                         valueListenable: _speedRunning,
                         builder: (_, running, __) => FilledButton(onPressed: running ? null : _runSpeed, child: Text(running ? 'Measuring...' : 'Run phone speed test')),
@@ -222,7 +221,7 @@ class _LocalScreenState extends State<LocalScreen> {
                   ),
                 ),
                 const Padding(
-                  padding: EdgeInsets.fromLTRB(4, 12, 4, 8),
+                  padding: EdgeInsets.fromLTRB(0, 16, 0, 8),
                   child: Text('Weekly summary, local only', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: appInk)),
                 ),
                 GlassCard(
@@ -230,7 +229,7 @@ class _LocalScreenState extends State<LocalScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(_report.isEmpty ? 'No report yet.' : _report, style: const TextStyle(height: 1.5)),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 8),
                       Text('Top devices by sessions (local): ${_top3.isEmpty ? 'none yet' : _top3.map((t) => '${t.$1} (${t.$3})').join(', ')}', style: const TextStyle(height: 1.45)),
                       const SizedBox(height: 4),
                       Text('Busiest hour from samples (local): $_busiestHour', style: const TextStyle(height: 1.45)),
@@ -240,7 +239,7 @@ class _LocalScreenState extends State<LocalScreen> {
                   ),
                 ),
                 const Padding(
-                  padding: EdgeInsets.fromLTRB(4, 12, 4, 8),
+                  padding: EdgeInsets.fromLTRB(0, 16, 0, 8),
                   child: Text('Device history, local only', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: appInk)),
                 ),
                 if (_history.isEmpty)
@@ -277,7 +276,7 @@ class _LocalScreenState extends State<LocalScreen> {
             sliver: SliverList(
               delegate: SliverChildListDelegate([
                 const Padding(
-                  padding: EdgeInsets.fromLTRB(4, 12, 4, 8),
+                  padding: EdgeInsets.fromLTRB(0, 16, 0, 8),
                   child: Text('Local alerts', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: appInk)),
                 ),
                 if (_alerts.isEmpty)
@@ -286,7 +285,7 @@ class _LocalScreenState extends State<LocalScreen> {
                   for (final a in _alerts)
                     GlassCard(key: ValueKey('alert_${a['t']}'), child: Text('${_time(a['t'])}: ${str(a['text'])}', style: const TextStyle(height: 1.45))),
                 const Padding(
-                  padding: EdgeInsets.fromLTRB(4, 12, 4, 8),
+                  padding: EdgeInsets.fromLTRB(0, 16, 0, 8),
                   child: Text('Offline cache', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: appInk)),
                 ),
                 GlassCard(

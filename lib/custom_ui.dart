@@ -23,7 +23,7 @@ class DetailTopBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 8, 4, 12),
+      padding: const EdgeInsets.fromLTRB(4, 8, 4, 16),
       child: Row(
         children: [
           Material(
@@ -68,14 +68,18 @@ class TabHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 4, 4, 16),
+      padding: const EdgeInsets.fromLTRB(0, 8, 0, 16),
       child: Row(
         children: [
           Container(
             width: 44,
             height: 44,
-            decoration: BoxDecoration(color: appSecondaryContainer, borderRadius: BorderRadius.circular(14)),
-            child: Icon(icon, color: appOnSecondary, size: 24),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(colors: [Color(0xFF0A1E46), appBlue], begin: Alignment.topLeft, end: Alignment.bottomRight),
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: const [BoxShadow(color: Color(0x330F172A), blurRadius: 8, offset: Offset(0, 3))],
+            ),
+            child: Icon(icon, color: Colors.white, size: 24),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -103,10 +107,11 @@ class CustomScrollList extends StatelessWidget {
   final List<Widget> children;
   @override
   Widget build(BuildContext context) {
+    final bottom = padding.bottom + 96 + MediaQuery.of(context).padding.bottom;
     return CustomScrollView(
       slivers: [
         SliverPadding(
-          padding: padding,
+          padding: EdgeInsets.fromLTRB(padding.left, padding.top, padding.right, bottom),
           sliver: SliverList(delegate: SliverChildListDelegate(children)),
         ),
       ],
@@ -128,9 +133,8 @@ class DetailScroll extends StatelessWidget {
     return CustomScrollView(
       slivers: [
         SliverToBoxAdapter(
-          child: SafeArea(
-            top: true,
-            bottom: false,
+          child: Padding(
+            padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top),
             child: Padding(
               padding: const EdgeInsets.fromLTRB(12, 0, 12, 0),
               child: DetailTopBar(title: title, subtitle: subtitle, actions: actions),
@@ -205,7 +209,7 @@ class HeroCard extends StatelessWidget {
     return Container(
       margin: margin,
       decoration: BoxDecoration(
-        gradient: const LinearGradient(colors: [appBlue, appCyan], begin: Alignment.topLeft, end: Alignment.bottomRight),
+        gradient: const LinearGradient(colors: [Color(0xFF0A1E46), appBlue], begin: Alignment.topLeft, end: Alignment.bottomRight),
         borderRadius: BorderRadius.circular(28),
       ),
       child: CustomPaint(
@@ -257,7 +261,7 @@ class CustomChoiceChip extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (icon != null) ...[Icon(icon, size: 16, color: selected ? appOnSecondary : appMuted), const SizedBox(width: 6)],
+              if (icon != null) ...[Icon(icon, size: 16, color: selected ? appOnSecondary : appMuted), const SizedBox(width: 8)],
               Text(label, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: selected ? appOnSecondary : appInk)),
             ],
           ),
@@ -267,85 +271,95 @@ class CustomChoiceChip extends StatelessWidget {
   }
 }
 
-/// Own slider: track and thumb drawn by layout, drag with snapping,
-/// haptic when the snapped step changes. No Material Slider widget.
+/// Thick slider built on the Material Slider for reliability:
+/// 12px rounded track, 28px white thumb with a 2.5px border and soft
+/// shadow, tick marks at preset positions, value bubble while
+/// dragging, 48px touch target. Stability wins over hand-rolled code.
 class CustomSlider extends StatefulWidget {
-  const CustomSlider({super.key, required this.value, required this.min, required this.max, required this.divisions, required this.onChanged, this.activeColor = appBlue});
+  const CustomSlider({super.key, required this.value, required this.min, required this.max, required this.divisions, required this.onChanged, this.activeColor = appBlue, this.label});
   final double value;
   final double min;
   final double max;
   final int divisions;
   final ValueChanged<double> onChanged;
   final Color activeColor;
+  final String? label;
   @override
   State<CustomSlider> createState() => _CustomSliderState();
 }
 
-class _CustomSliderState extends State<CustomSlider> {
-  bool _dragging = false;
-  double _snap(double raw, double width) {
-    if (width <= 0) return widget.value;
-    final fraction = (raw / width).clamp(0.0, 1.0);
-    final span = widget.max - widget.min;
-    final step = span / widget.divisions;
-    final snapped = widget.min + ((fraction * span / step).round() * step);
-    return snapped.clamp(widget.min, widget.max);
+class _ThickThumbShape extends SliderComponentShape {
+  const _ThickThumbShape(this.borderColor);
+  final Color borderColor;
+  @override
+  Size getPreferredSize(bool isEnabled, bool isDiscrete) => const Size(28, 28);
+  @override
+  void paint(
+    PaintingContext context,
+    Offset center, {
+    required Animation<double> activationAnimation,
+    required Animation<double> enableAnimation,
+    required bool isDiscrete,
+    required TextPainter labelPainter,
+    required RenderBox parentBox,
+    required SliderThemeData sliderTheme,
+    required TextDirection textDirection,
+    required double value,
+    required double textScaleFactor,
+    required Size sizeWithOverflow,
+  }) {
+    final canvas = context.canvas;
+    final shadowPath = Path()..addOval(Rect.fromCircle(center: center, radius: 14));
+    canvas.drawShadow(shadowPath, const Color(0x330F172A), 6, false);
+    canvas.drawCircle(center, 14, Paint()..color = Colors.white);
+    canvas.drawCircle(
+      center,
+      14,
+      Paint()
+        ..color = borderColor
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.5,
+    );
   }
+}
 
+class _CustomSliderState extends State<CustomSlider> {
+  double? _last;
   @override
   Widget build(BuildContext context) {
-    final fraction = widget.max == widget.min ? 0.0 : (widget.value - widget.min) / (widget.max - widget.min);
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final width = constraints.maxWidth - 28;
-        return GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onHorizontalDragStart: (_) => setState(() => _dragging = true),
-          onHorizontalDragEnd: (_) => setState(() => _dragging = false),
-          onHorizontalDragUpdate: (d) {
-            final next = _snap(d.localPosition.dx - 14, width);
-            if (next != widget.value) {
+    final value = widget.value.clamp(widget.min, widget.max);
+    return SizedBox(
+      height: 48,
+      child: SliderTheme(
+        data: SliderTheme.of(context).copyWith(
+          trackHeight: 12,
+          trackShape: const RoundedRectSliderTrackShape(),
+          activeTrackColor: widget.activeColor,
+          inactiveTrackColor: const Color(0xFFE2EAF4),
+          thumbShape: _ThickThumbShape(widget.activeColor),
+          tickMarkShape: const RoundSliderTickMarkShape(tickMarkRadius: 3),
+          activeTickMarkColor: Colors.white.withValues(alpha: 0.7),
+          inactiveTickMarkColor: const Color(0xFF94A3B8),
+          valueIndicatorColor: appInk,
+          valueIndicatorTextStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+          showValueIndicator: ShowValueIndicator.onlyForDiscrete,
+          overlayShape: const RoundSliderOverlayShape(overlayRadius: 20),
+        ),
+        child: Slider(
+          value: value,
+          min: widget.min,
+          max: widget.max,
+          divisions: widget.divisions > 0 ? widget.divisions : null,
+          label: widget.label ?? value.toStringAsFixed(0),
+          onChanged: (v) {
+            if (_last != v) {
+              _last = v;
               uiHaptic();
-              widget.onChanged(next);
             }
+            widget.onChanged(v);
           },
-          onTapDown: (d) {
-            final next = _snap(d.localPosition.dx - 14, width);
-            if (next != widget.value) {
-              uiHaptic();
-              widget.onChanged(next);
-            }
-          },
-          child: Container(
-            height: 48,
-            alignment: Alignment.center,
-            child: Stack(
-              alignment: Alignment.centerLeft,
-              children: [
-                Container(height: 8, decoration: BoxDecoration(color: const Color(0xFFE2EAF4), borderRadius: BorderRadius.circular(999))),
-                FractionallySizedBox(
-                  widthFactor: fraction.clamp(0.0, 1.0),
-                  child: Container(height: 8, decoration: BoxDecoration(color: widget.activeColor, borderRadius: BorderRadius.circular(999))),
-                ),
-                Positioned(
-                  left: (fraction.clamp(0.0, 1.0) * width).clamp(0.0, width),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 150),
-                    width: _dragging ? 32 : 26,
-                    height: _dragging ? 32 : 26,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: widget.activeColor, width: 2),
-                      boxShadow: const [BoxShadow(color: Color(0x220F172A), blurRadius: 8, offset: Offset(0, 2))],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
+        ),
+      ),
     );
   }
 }
@@ -378,7 +392,7 @@ Future<T?> showCustomChoiceSheet<T>(
                 Container(
                   height: 4,
                   decoration: const BoxDecoration(
-                    gradient: LinearGradient(colors: [appBlue, appCyan]),
+                    color: appBlue,
                     borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
                   ),
                 ),

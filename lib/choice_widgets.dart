@@ -135,6 +135,7 @@ class LimitEditor extends StatefulWidget {
 
 class _LimitEditorState extends State<LimitEditor> {
   late final TextEditingController _text;
+  late bool _manual;
   LimitUnit _unit = LimitUnit.mbps;
   Timer? _debounce;
   String? _error;
@@ -144,6 +145,7 @@ class _LimitEditorState extends State<LimitEditor> {
   void initState() {
     super.initState();
     _lastKbps = widget.kbps;
+    _manual = limitNeedsManual(widget.kbps);
     _text = TextEditingController(text: _textFor(widget.kbps));
   }
 
@@ -163,6 +165,7 @@ class _LimitEditorState extends State<LimitEditor> {
     super.didUpdateWidget(old);
     if (widget.kbps != _lastKbps) {
       _lastKbps = widget.kbps;
+      _manual = limitNeedsManual(widget.kbps);
       if (!_text.text.isEmpty || widget.kbps > 0) {
         final parsed = double.tryParse(_text.text.trim());
         final parsedKbps = parsed == null ? -1 : kbpsFromValue(parsed, _unit);
@@ -218,26 +221,40 @@ class _LimitEditorState extends State<LimitEditor> {
   }
 
   void _setPreset(int mbps) {
-    setState(() => _unit = LimitUnit.mbps);
+    setState(() {
+      _manual = false;
+      _unit = LimitUnit.mbps;
+    });
     _text.text = mbps == 0 ? '' : '$mbps';
     _applyText();
+  }
+
+  void _openManual() {
+    setState(() {
+      _manual = true;
+      if (_text.text.isEmpty && widget.kbps > 0) {
+        _text.text = _format(valueFromKbps(widget.kbps, _unit));
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final sliderSteps = LimitEditor.steps;
-    final sliderIdx = sliderSteps.indexOf(closestPresetMbps(widget.kbps));
+    final sliderIdx = presetIndexForKbps(widget.kbps);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(limitSummary(widget.kbps), style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: appInk, fontFeatures: [FontFeature.tabularFigures()])),
         const SizedBox(height: 4),
-        const Text('Slider shows the closest preset as a hint only. The typed value is what is used.', style: TextStyle(color: appMuted, fontSize: 12, height: 1.4)),
+        if (_manual)
+          const Text('Manual value below is what is used. Tap a preset to switch back.', style: TextStyle(color: appMuted, fontSize: 12, height: 1.4)),
         CustomSlider(
           value: sliderIdx.toDouble(),
           min: 0,
           max: (sliderSteps.length - 1).toDouble(),
           divisions: sliderSteps.length - 1,
+          label: limitSummary(widget.kbps),
           onChanged: (v) => _setPreset(sliderSteps[v.round()]),
         ),
         Wrap(
@@ -247,11 +264,17 @@ class _LimitEditorState extends State<LimitEditor> {
             for (final p in sliderSteps)
               CustomChoiceChip(
                 label: p == 0 ? 'No limit' : '$p Mbps',
-                selected: closestPresetMbps(widget.kbps) == p && _unit == LimitUnit.mbps,
+                selected: !_manual && closestPresetMbps(widget.kbps) == p && _unit == LimitUnit.mbps,
                 onTap: () => _setPreset(p),
               ),
+            CustomChoiceChip(
+              label: 'Manual',
+              selected: _manual,
+              onTap: _openManual,
+            ),
           ],
         ),
+        if (_manual) ...[
         const SizedBox(height: 12),
         Row(
           children: [
@@ -275,7 +298,7 @@ class _LimitEditorState extends State<LimitEditor> {
               child: InkWell(
                 customBorder: const CircleBorder(),
                 onTap: () => _step(-1),
-                child: const Padding(padding: EdgeInsets.all(12), child: Icon(Icons.remove, size: 20, color: appInk)),
+                child: const Padding(padding: EdgeInsets.all(14), child: Icon(Icons.remove, size: 20, color: appInk)),
               ),
             ),
             const SizedBox(width: 8),
@@ -285,12 +308,12 @@ class _LimitEditorState extends State<LimitEditor> {
               child: InkWell(
                 customBorder: const CircleBorder(),
                 onTap: () => _step(1),
-                child: const Padding(padding: EdgeInsets.all(12), child: Icon(Icons.add, size: 20, color: Colors.white)),
+                child: const Padding(padding: EdgeInsets.all(14), child: Icon(Icons.add, size: 20, color: Colors.white)),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 8),
         SegmentedControl<LimitUnit>(
           options: const [(LimitUnit.mbps, 'Mbps'), (LimitUnit.kbps, 'KBps'), (LimitUnit.mbpsByte, 'MBps')],
           value: _unit,
@@ -304,6 +327,7 @@ class _LimitEditorState extends State<LimitEditor> {
         if (limitAboveRouterHint(widget.kbps)) ...[
           const SizedBox(height: 8),
           const Text('Above 1000 Mbps: the router may cap this. It is not clamped here.', style: TextStyle(color: Color(0xFFB45309), fontSize: 12, height: 1.4)),
+        ],
         ],
       ],
     );
@@ -328,6 +352,7 @@ class RoamingSlider extends StatelessWidget {
           min: -90,
           max: -40,
           divisions: 10,
+          label: '$v dBm',
           onChanged: (x) => onChanged(x.round()),
         ),
         const Row(

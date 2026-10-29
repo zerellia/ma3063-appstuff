@@ -56,4 +56,22 @@ void main() {
     expect(LimitUnit.kbps.label, 'KBps');
     expect(LimitUnit.mbpsByte.label, 'MBps');
   });
+
+  test('Manual field is needed only for non-preset values', () {
+    expect(limitNeedsManual(0), isFalse);
+    expect(limitNeedsManual(10000), isFalse);
+    expect(limitNeedsManual(500000), isFalse);
+    expect(limitNeedsManual(12000), isTrue);
+    expect(limitNeedsManual(8000), isTrue);
+    expect(isPresetKbps(20000), isTrue);
+    expect(isPresetKbps(7000), isFalse);
+  });
+
+  test('Slider preset mapping is exact for presets and closest otherwise', () {
+    expect(presetIndexForKbps(0), 0);
+    expect(presetIndexForKbps(10000), 2);
+    expect(presetIndexForKbps(500000), 7);
+    expect(presetIndexForKbps(12000), 2);
+    expect(presetIndexForKbps(7000), 1);
+  });
 }

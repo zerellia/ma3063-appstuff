@@ -295,7 +295,7 @@ class _NetworkScreenState extends State<NetworkScreen> {
                     CustomChoiceChip(label: 'Quad9', selected: false, onTap: () => setState(() { _dns1.text = '9.9.9.9'; _dns2.text = '149.112.112.112'; })),
                   ],
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
                 FilledButton(onPressed: _saveDns, child: const Text('Save DNS')),
               ],
             ),
@@ -307,7 +307,7 @@ class _NetworkScreenState extends State<NetworkScreen> {
                 advField(_dmz, 'DMZ host IP (empty clears it)'),
                 OutlinedButton(onPressed: _pickDmzDevice, child: const Text('Pick a device')),
                 const Text('DMZ opens all ports to one device. Only use it for a device you trust.', style: TextStyle(color: appMuted, fontSize: 12, height: 1.45)),
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
                 FilledButton(onPressed: _saveDmz, child: const Text('Save DMZ')),
               ],
             ),
@@ -324,7 +324,7 @@ class _NetworkScreenState extends State<NetworkScreen> {
                 Row(
                   children: [
                     Expanded(child: OutlinedButton(onPressed: () => _setWps('on'), child: const Text('WPS on'))),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: 8),
                     Expanded(child: OutlinedButton(onPressed: () => _setWps('off'), child: const Text('WPS off'))),
                   ],
                 ),
@@ -336,14 +336,14 @@ class _NetworkScreenState extends State<NetworkScreen> {
             child: Column(
               children: [
                 Text('Current: $_wanStatus', style: const TextStyle(fontWeight: FontWeight.w700)),
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
                 SegmentedControl<WanType>(
                   options: const [(WanType.dhcp, 'Automatic'), (WanType.pppoe, 'PPPoE'), (WanType.static, 'Static IP')],
                   value: WanType.fromCode(_wanType),
                   onChanged: (v) => setState(() => _wanType = v.code),
                 ),
                 Text(WanType.fromCode(_wanType).description, style: const TextStyle(color: appMuted, fontSize: 12)),
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
                 Wrap(
                   spacing: 6,
                   children: [
@@ -364,9 +364,9 @@ class _NetworkScreenState extends State<NetworkScreen> {
                   advField(_wanDns, 'Static DNS, space separated'),
                 ],
                 FilledButton(onPressed: _saveWan, child: const Text('Save WAN')),
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
                 OutlinedButton(onPressed: _detectWan, child: const Text('Detect WAN')),
-                if (_detect.isNotEmpty) ...[const SizedBox(height: 10), Text(_detect, style: const TextStyle(height: 1.45))],
+                if (_detect.isNotEmpty) ...[const SizedBox(height: 8), Text(_detect, style: const TextStyle(height: 1.45))],
               ],
             ),
           ),
@@ -649,7 +649,7 @@ class _Ipv6ScreenState extends State<Ipv6Screen> {
                   ),
                 ),
                 Text(Ipv6Mode.fromCode(_mode).description, style: const TextStyle(color: appMuted, fontSize: 12)),
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
                 FilledButton(onPressed: _saveMode, child: const Text('Save mode')),
               ],
             ),
@@ -964,7 +964,7 @@ class _SystemScreenState extends State<SystemScreen> {
               children: [
                 Text('Version: $_firmware', style: const TextStyle(fontWeight: FontWeight.w700)),
                 Text('Free size: ${formatFirmwareSize(_freeSize)}', style: const TextStyle(color: appMuted)),
-                const SizedBox(height: 6),
+                const SizedBox(height: 8),
                 const Text('Firmware file upload and factory reset are not in this build.', style: TextStyle(color: appMuted, fontSize: 12, height: 1.45)),
               ],
             ),
@@ -985,7 +985,7 @@ class _SystemScreenState extends State<SystemScreen> {
               children: [
                 Text('Router time: $_routerTime', style: const TextStyle(color: appMuted)),
                 Text('Timezone: $_tzName', style: const TextStyle(color: appMuted)),
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
                 choiceRow('Timezone', timezoneOptions.where((t) => t.$1 == _tzCode).isEmpty ? _tzCode : timezoneOptions.firstWhere((t) => t.$1 == _tzCode).$2, null, () async {
                   final opts = <(String, String, String?)>[for (final t in timezoneOptions) (t.$1, t.$2, null)];
                   if (!opts.any((o) => o.$1 == _tzCode)) opts.insert(0, (_tzCode, 'Custom setting', 'Tap to choose a standard option.'));
@@ -1004,7 +1004,7 @@ class _SystemScreenState extends State<SystemScreen> {
               children: [
                 SwitchListTile(value: _rebootEnabled, onChanged: (v) => setState(() => _rebootEnabled = v), title: const Text('Scheduled reboot')),
                 WeekdayChips(selected: _rebootDays, onChanged: (v) => setState(() => _rebootDays = v)),
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
                 TimePickerRow(label: 'Reboot time', value: _rebootTime, onChanged: (v) => setState(() => _rebootTime = v)),
                 FilledButton(onPressed: _saveReboot, child: const Text('Save scheduled reboot')),
               ],
@@ -1051,7 +1051,7 @@ class _SystemScreenState extends State<SystemScreen> {
                   onChanged: (v) => setState(() => _ledAll = v.code),
                 ),
                 Text(LedMode.fromCode(_ledAll).description, style: const TextStyle(color: appMuted, fontSize: 12)),
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
                 for (var i = 0; i < _ledSchedules.length; i++) _ledScheduleCard(i),
                 OutlinedButton.icon(
                   onPressed: () => setState(() => _ledSchedules.add({'enable': true, 'week': <String>['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'], 'time': <String>['22:00', '06:00']})),
@@ -1060,7 +1060,7 @@ class _SystemScreenState extends State<SystemScreen> {
                 ),
                 const SizedBox(height: 8),
                 const Text('Schedules below are sent as a list. An empty list would not save a schedule.', style: TextStyle(color: appMuted, fontSize: 12, height: 1.45)),
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
                 FilledButton(onPressed: _saveLed, child: const Text('Save LED')),
               ],
             ),
@@ -1079,8 +1079,8 @@ class _SystemScreenState extends State<SystemScreen> {
       time.add('');
     }
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(border: Border.all(color: appBorder), borderRadius: BorderRadius.circular(20)),
       child: Column(
         children: [
@@ -1450,9 +1450,9 @@ class _MediaScreenState extends State<MediaScreen> {
                       ),
                   ],
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
                 ChipInput(values: _radio1List, onChanged: (v) => setState(() => _radio1List = v), addLabel: 'Add a Radio 1 entry', hint: 'Entry value'),
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
                 ChipInput(values: _radio2List, onChanged: (v) => setState(() => _radio2List = v), addLabel: 'Add a Radio 2 entry', hint: 'Entry value'),
                 FilledButton(onPressed: _saveIptv, child: const Text('Save IPTV')),
               ],
@@ -1492,7 +1492,7 @@ class _MediaScreenState extends State<MediaScreen> {
                       ),
                   ],
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
                 const Align(alignment: Alignment.centerLeft, child: Text('Radio 2 BSSIDs', style: TextStyle(fontWeight: FontWeight.w600))),
                 Wrap(
                   spacing: 6,

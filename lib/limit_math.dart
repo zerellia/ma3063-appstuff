@@ -74,3 +74,22 @@ int closestPresetMbps(int kbps) {
   }
   return best;
 }
+
+/// Preset values in Kbps, matching LimitEditor.steps in Mbps.
+const List<int> presetKbps = [0, 5000, 10000, 20000, 50000, 100000, 200000, 500000];
+
+/// True when [kbps] is exactly one of the presets.
+bool isPresetKbps(int kbps) => presetKbps.contains(kbps);
+
+/// True when the value needs the manual field: positive and not a preset.
+bool limitNeedsManual(int kbps) => kbps > 0 && !isPresetKbps(kbps);
+
+/// Index of the preset for the slider: exact preset, else closest preset.
+int presetIndexForKbps(int kbps) {
+  if (presetKbps.contains(kbps)) return presetKbps.indexOf(kbps);
+  var best = 0;
+  for (var i = 0; i < presetKbps.length; i++) {
+    if ((presetKbps[i] - kbps).abs() < (presetKbps[best] - kbps).abs()) best = i;
+  }
+  return best;
+}
