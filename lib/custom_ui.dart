@@ -392,13 +392,6 @@ Future<T?> showCustomChoiceSheet<T>(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Container(
-                  height: 4,
-                  decoration: const BoxDecoration(
-                    color: appBlue,
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-                  ),
-                ),
                 const SizedBox(height: 12),
                 Container(width: 36, height: 5, decoration: BoxDecoration(color: appBorder, borderRadius: BorderRadius.circular(999))),
                 const SizedBox(height: 12),

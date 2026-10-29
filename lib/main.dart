@@ -45,8 +45,10 @@ class MaApp extends StatelessWidget {
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
           fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
           enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Color(0xFF2F7CF6), width: 1.5)),
         ),
         navigationBarTheme: NavigationBarThemeData(
           backgroundColor: Colors.white,
@@ -1428,12 +1430,14 @@ class _WifiScreenState extends State<WifiScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text('Edit ${str(ssid['ssidName'], 'WiFi')}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 20),
                 if (dialogError != null) ...[
                   Text(dialogError!, style: const TextStyle(color: Color(0xFFB42318))),
                   const SizedBox(height: 16),
                 ],
-                TextField(controller: name, decoration: const InputDecoration(labelText: 'Network name')),
+                const Text('Network name', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 6),
+                TextField(controller: name, decoration: const InputDecoration(hintText: 'Network name', contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16))),
                 const SizedBox(height: 16),
                 choiceRow('Encryption', Encryption.fromCode(enc).label, null, () async {
                   final picked = await showDialog<String>(
@@ -1496,19 +1500,23 @@ class _WifiScreenState extends State<WifiScreen> {
                   if (picked != null) setD(() => enc = picked);
                 }),
                 if (enc != 'open') ...[
-                  const SizedBox(height: 16),
+                  const Text('WiFi password', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 6),
                   TextField(
                     controller: pass,
                     obscureText: !showPass,
                     decoration: InputDecoration(
-                      labelText: 'WiFi password (min 8 characters)',
+                      hintText: 'Minimum 8 characters',
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                       suffixIcon: IconButton(icon: Icon(showPass ? Icons.visibility_off : Icons.visibility), onPressed: () => setD(() => showPass = !showPass)),
                     ),
                   ),
                 ],
-                SwitchListTile(value: enabled, onChanged: (v) => setD(() => enabled = v), title: const Text('Enabled')),
-                SwitchListTile(value: hidden, onChanged: (v) => setD(() => hidden = v), title: const Text('Hidden network')),
-                const Text('Connected devices will disconnect briefly when WiFi settings are applied.', style: TextStyle(color: reyeeMuted, fontSize: 12)),
+                const SizedBox(height: 16),
+                SwitchListTile(contentPadding: const EdgeInsets.symmetric(horizontal: 0), value: enabled, onChanged: (v) => setD(() => enabled = v), title: const Text('Enabled')),
+                SwitchListTile(contentPadding: const EdgeInsets.symmetric(horizontal: 0), value: hidden, onChanged: (v) => setD(() => hidden = v), title: const Text('Hidden network')),
+                const SizedBox(height: 8),
+                const Text('Connected devices will disconnect briefly when WiFi settings are applied.', style: TextStyle(color: reyeeMuted, fontSize: 12, height: 1.45)),
                 const SizedBox(height: 16),
                 Row(
                   children: [

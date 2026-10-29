@@ -317,7 +317,7 @@ class _NetworkScreenState extends State<NetworkScreen> {
           GlassCard(
             child: Column(
               children: [
-                SwitchListTile(value: _upnp, onChanged: (v) => setState(() => _upnp = v), title: const Text('UPnP')),
+                SwitchListTile(contentPadding: const EdgeInsets.symmetric(horizontal: 0), value: _upnp, onChanged: (v) => setState(() => _upnp = v), title: const Text('UPnP')),
                 FilledButton(onPressed: _saveUpnp, child: const Text('Save UPnP')),
                 const SizedBox(height: 12),
                 Text('WPS: ${(() { final w = _wps.toLowerCase(); if (w == 'on' || w == '1' || w == 'true') return 'On'; if (w == 'off' || w == '0' || w == 'false') return 'Off'; return 'Unknown'; })()}', style: const TextStyle(fontWeight: FontWeight.w700)),
@@ -642,14 +642,11 @@ class _Ipv6ScreenState extends State<Ipv6Screen> {
           GlassCard(
             child: Column(
               children: [
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: SegmentedControl<Ipv6Mode>(
+                SegmentedControl<Ipv6Mode>(
                     options: const [(Ipv6Mode.v4Only, 'IPv4 only'), (Ipv6Mode.v6Only, 'IPv6 only'), (Ipv6Mode.dual, 'IPv4 and IPv6')],
                     value: Ipv6Mode.fromCode(_mode),
                     onChanged: (v) => setState(() => _mode = v.code),
                   ),
-                ),
                 Text(Ipv6Mode.fromCode(_mode).description, style: const TextStyle(color: appMuted, fontSize: 12)),
                 const SizedBox(height: 16),
                 FilledButton(onPressed: _saveMode, child: const Text('Save mode')),
@@ -1020,7 +1017,7 @@ class _SystemScreenState extends State<SystemScreen> {
           GlassCard(
             child: Column(
               children: [
-                SwitchListTile(value: _rebootEnabled, onChanged: (v) => setState(() => _rebootEnabled = v), title: const Text('Scheduled reboot')),
+                SwitchListTile(contentPadding: const EdgeInsets.symmetric(horizontal: 0), value: _rebootEnabled, onChanged: (v) => setState(() => _rebootEnabled = v), title: const Text('Scheduled reboot')),
                 WeekdayChips(selected: _rebootDays, onChanged: (v) => setState(() => _rebootDays = v)),
                 const SizedBox(height: 16),
                 TimePickerRow(label: 'Reboot time', value: _rebootTime, onChanged: (v) => setState(() => _rebootTime = v)),
@@ -1032,14 +1029,11 @@ class _SystemScreenState extends State<SystemScreen> {
           GlassCard(
             child: Column(
               children: [
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: SegmentedControl<int?>(
+                SegmentedControl<int?>(
                     options: const [(null, 'Off'), (5, '5 min'), (15, '15 min'), (30, '30 min'), (60, '1 hour')],
                     value: _sessionMinutes,
                     onChanged: (v) => setState(() => _sessionMinutes = v),
                   ),
-                ),
                 FilledButton(onPressed: _saveSession, child: const Text('Save session timeout')),
                 const SizedBox(height: 12),
                 OutlinedButton(onPressed: _setRouterLanguageEnglish, child: const Text('Set router language to English')),
@@ -1050,10 +1044,10 @@ class _SystemScreenState extends State<SystemScreen> {
           GlassCard(
             child: Column(
               children: [
-                SwitchListTile(value: _accSoftware, onChanged: (v) => setState(() => _accSoftware = v), title: const Text('Software acceleration')),
-                SwitchListTile(value: _accHardware, onChanged: (v) => setState(() => _accHardware = v), title: const Text('Hardware acceleration')),
-                SwitchListTile(value: _accRadio1, onChanged: (v) => setState(() => _accRadio1 = v), title: const Text('Radio 1 frame burst')),
-                SwitchListTile(value: _accRadio2, onChanged: (v) => setState(() => _accRadio2 = v), title: const Text('Radio 2 frame burst')),
+                SwitchListTile(contentPadding: const EdgeInsets.symmetric(horizontal: 0), value: _accSoftware, onChanged: (v) => setState(() => _accSoftware = v), title: const Text('Software acceleration')),
+                SwitchListTile(contentPadding: const EdgeInsets.symmetric(horizontal: 0), value: _accHardware, onChanged: (v) => setState(() => _accHardware = v), title: const Text('Hardware acceleration')),
+                SwitchListTile(contentPadding: const EdgeInsets.symmetric(horizontal: 0), value: _accRadio1, onChanged: (v) => setState(() => _accRadio1 = v), title: const Text('Radio 1 frame burst')),
+                SwitchListTile(contentPadding: const EdgeInsets.symmetric(horizontal: 0), value: _accRadio2, onChanged: (v) => setState(() => _accRadio2 = v), title: const Text('Radio 2 frame burst')),
                 FilledButton(onPressed: _saveAccel, child: const Text('Save acceleration')),
               ],
             ),
@@ -1450,7 +1444,7 @@ class _MediaScreenState extends State<MediaScreen> {
           GlassCard(
             child: Column(
               children: [
-                SwitchListTile(value: _iptvEnabled, onChanged: (v) => setState(() => _iptvEnabled = v), title: const Text('IPTV enabled')),
+                SwitchListTile(contentPadding: const EdgeInsets.symmetric(horizontal: 0), value: _iptvEnabled, onChanged: (v) => setState(() => _iptvEnabled = v), title: const Text('IPTV enabled')),
                 advField(_vlan, 'VLAN ID (1 to 4094)', keyboardType: TextInputType.number),
                 const Align(alignment: Alignment.centerLeft, child: Text('Ethernet ports', style: TextStyle(fontWeight: FontWeight.w600))),
                 Wrap(
@@ -1482,7 +1476,7 @@ class _MediaScreenState extends State<MediaScreen> {
           GlassCard(
             child: Column(
               children: [
-                SwitchListTile(value: _igmpEnabled, onChanged: (v) => setState(() => _igmpEnabled = v), title: const Text('IGMP snooping enabled')),
+                SwitchListTile(contentPadding: const EdgeInsets.symmetric(horizontal: 0), value: _igmpEnabled, onChanged: (v) => setState(() => _igmpEnabled = v), title: const Text('IGMP snooping enabled')),
                 advField(_igmpMode, 'Mode'),
                 advField(_igmpLan2Lan, 'LAN to LAN'),
                 const Text('No confirmed choice list yet, kept as text.', style: TextStyle(color: appMuted, fontSize: 12)),

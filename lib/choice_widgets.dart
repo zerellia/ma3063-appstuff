@@ -20,10 +20,13 @@ Future<T?> showChoiceSheet<T>(
 }
 
 Widget choiceRow(String title, String value, String? subtitle, VoidCallback onTap) {
-  return InkWell(
+  return Padding(
+    padding: const EdgeInsets.only(bottom: 16),
+    child: InkWell(
     onTap: onTap,
     borderRadius: BorderRadius.circular(20),
     child: Container(
+      width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(color: appSurfaceLow, borderRadius: BorderRadius.circular(20)),
       child: Row(
@@ -38,11 +41,12 @@ Widget choiceRow(String title, String value, String? subtitle, VoidCallback onTa
             ),
           ),
           const SizedBox(width: 12),
-          Flexible(child: Text(value, textAlign: TextAlign.right, style: const TextStyle(fontWeight: FontWeight.w700, color: appBlue))),
+          Flexible(child: Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.right, style: const TextStyle(fontWeight: FontWeight.w700, color: appBlue))),
           const SizedBox(width: 4),
           const Icon(Icons.chevron_right, color: appMuted),
         ],
       ),
+    ),
     ),
   );
 }
@@ -105,6 +109,7 @@ class TimePickerRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(
           child: choiceRow(

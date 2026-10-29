@@ -427,7 +427,7 @@ class _RadioScreenState extends State<RadioScreen> {
           GlassCard(
             child: Column(
               children: [
-                SwitchListTile(
+                SwitchListTile(contentPadding: const EdgeInsets.symmetric(horizontal: 0), 
                   value: _wifiFirst,
                   onChanged: (v) => setState(() => _wifiFirst = v),
                   title: const Text('Prefer 5 GHz first (Band steering)'),
@@ -473,7 +473,6 @@ class _RadioScreenState extends State<RadioScreen> {
             final picked = await showChoiceSheet<String>(context, title: 'Channel', options: opts, current: r['channel'].toString());
             if (picked != null) setState(() => _radios[i]['channel'] = picked);
           }),
-          const SizedBox(height: 16),
           choiceRow('Bandwidth', bandwidthLabel(r['bandWidth'].toString(), is5g: str(r['type']).contains('5')), null, () async {
             final is5 = str(r['type']).contains('5');
             final codes = is5 ? ['auto', 'auto_160', '20', '40', '80', '160'] : ['20', '40', '20_40'];
@@ -482,19 +481,16 @@ class _RadioScreenState extends State<RadioScreen> {
             final picked = await showChoiceSheet<String>(context, title: 'Bandwidth', options: opts, current: r['bandWidth'].toString());
             if (picked != null) setState(() => _radios[i]['bandWidth'] = picked);
           }),
-          const SizedBox(height: 8),
           const Text('Signal strength', style: TextStyle(fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: SegmentedControl<TxPower>(
-              options: const [(TxPower.automatic, 'Automatic'), (TxPower.throughWall, 'Through-wall'), (TxPower.balanced, 'Balanced'), (TxPower.eco, 'Eco')],
-              value: TxPower.fromCode(r['txpower']),
-              onChanged: (v) => setState(() => _radios[i]['txpower'] = v.code),
-            ),
+          SegmentedControl<TxPower>(
+            options: const [(TxPower.automatic, 'Automatic'), (TxPower.throughWall, 'Through-wall'), (TxPower.balanced, 'Balanced'), (TxPower.eco, 'Eco')],
+            value: TxPower.fromCode(r['txpower']),
+            onChanged: (v) => setState(() => _radios[i]['txpower'] = v.code),
           ),
-          Text(TxPower.fromCode(r['txpower']).description, style: const TextStyle(color: appMuted, fontSize: 12)),
           const SizedBox(height: 8),
+          Text(TxPower.fromCode(r['txpower']).description, style: const TextStyle(color: appMuted, fontSize: 12)),
+          const SizedBox(height: 16),
           const Text('WiFi generation', style: TextStyle(fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
           SegmentedControl<String>(
@@ -502,7 +498,8 @@ class _RadioScreenState extends State<RadioScreen> {
             value: (r['hwmode'] ?? '11ax').toString(),
             onChanged: (v) => setState(() => _radios[i]['hwmode'] = v),
           ),
-          SwitchListTile(
+          const SizedBox(height: 8),
+          SwitchListTile(contentPadding: const EdgeInsets.symmetric(horizontal: 0), 
             value: (r['wmeSwitch'] ?? 'on').toString() == 'on',
             onChanged: (v) => setState(() => _radios[i]['wmeSwitch'] = v ? 'on' : 'off'),
             title: const Text('WMM'),
@@ -720,14 +717,11 @@ class _MeshScreenState extends State<MeshScreen> {
           GlassCard(
             child: Column(
               children: [
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: SegmentedControl<MeshMode>(
+                SegmentedControl<MeshMode>(
                     options: const [(MeshMode.controller, 'Main router'), (MeshMode.agent, 'Mesh child'), (MeshMode.unknown, 'Not in mesh')],
                     value: MeshMode.fromCode(_mode),
                     onChanged: (v) => setState(() => _mode = v.code),
                   ),
-                ),
                 const SizedBox(height: 8),
                 Text(MeshMode.fromCode(_mode).description, style: const TextStyle(color: appMuted, fontSize: 12)),
                 const SizedBox(height: 16),
@@ -739,7 +733,7 @@ class _MeshScreenState extends State<MeshScreen> {
           GlassCard(
             child: Column(
               children: [
-                SwitchListTile(value: _roaming, onChanged: (v) => setState(() => _roaming = v), title: const Text('Roaming enabled')),
+                SwitchListTile(contentPadding: const EdgeInsets.symmetric(horizontal: 0), value: _roaming, onChanged: (v) => setState(() => _roaming = v), title: const Text('Roaming enabled')),
                 RoamingSlider(label: '2.4 GHz threshold', dbm: _t24i, onChanged: (v) => setState(() => _t24i = v)),
                 const SizedBox(height: 8),
                 RoamingSlider(label: '5 GHz threshold', dbm: _t5i, onChanged: (v) => setState(() => _t5i = v)),
@@ -752,7 +746,7 @@ class _MeshScreenState extends State<MeshScreen> {
           GlassCard(
             child: Column(
               children: [
-                SwitchListTile(value: _easyMesh, onChanged: (v) => setState(() => _easyMesh = v), title: const Text('EasyMesh')),
+                SwitchListTile(contentPadding: const EdgeInsets.symmetric(horizontal: 0), value: _easyMesh, onChanged: (v) => setState(() => _easyMesh = v), title: const Text('EasyMesh')),
                 FilledButton(onPressed: _saveEasyMesh, child: const Text('Save EasyMesh')),
               ],
             ),

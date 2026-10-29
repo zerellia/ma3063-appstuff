@@ -95,34 +95,41 @@ class SegmentedControl<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(color: appSurfaceContainer, borderRadius: BorderRadius.circular(999)),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisSize: MainAxisSize.max,
         children: [
           for (final opt in options)
-            Material(
-              color: Colors.transparent,
-              child: InkWell(
-                borderRadius: BorderRadius.circular(999),
-                onTap: () {
-                  HapticFeedback.selectionClick();
-                  onChanged(opt.$1);
-                },
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  curve: Curves.easeOut,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: opt.$1 == value ? appSecondaryContainer : Colors.transparent,
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Text(
-                    opt.$2,
-                    style: TextStyle(
-                      color: opt.$1 == value ? appOnSecondary : appMuted,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13,
+            Expanded(
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(999),
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    onChanged(opt.$1);
+                  },
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    curve: Curves.easeOut,
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: opt.$1 == value ? appSecondaryContainer : Colors.transparent,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Center(
+                      child: Text(
+                        opt.$2,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: opt.$1 == value ? appOnSecondary : appMuted,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12,
+                        ),
+                      ),
                     ),
                   ),
                 ),
