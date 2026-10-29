@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 /// Light futuristic theme tokens. Light only, no dark theme, no
 /// version label anywhere in the UI.
@@ -77,20 +78,29 @@ class SegmentedControl<T> extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           for (final opt in options)
-            GestureDetector(
-              onTap: () => onChanged(opt.$1),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                decoration: BoxDecoration(
-                  color: opt.$1 == value ? appSecondaryContainer : Colors.transparent,
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  opt.$2,
-                  style: TextStyle(
-                    color: opt.$1 == value ? appOnSecondary : appMuted,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 13,
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(999),
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  onChanged(opt.$1);
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeOut,
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: opt.$1 == value ? appSecondaryContainer : Colors.transparent,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    opt.$2,
+                    style: TextStyle(
+                      color: opt.$1 == value ? appOnSecondary : appMuted,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                    ),
                   ),
                 ),
               ),
@@ -155,11 +165,15 @@ Widget skeletonCard() {
   );
 }
 
+
+/// Ring gauge for a 0 to 100 value, drawn with CustomPainter.
 Widget emptyState(String title, String body, String actionLabel, VoidCallback onAction) {
   return GlassCard(
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        const Icon(Icons.inbox_outlined, size: 40, color: appMuted),
+        const SizedBox(height: 10),
         Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: appInk)),
         const SizedBox(height: 6),
         Text(body, style: const TextStyle(color: appMuted, height: 1.45)),

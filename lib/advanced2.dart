@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'api.dart';
 import 'theme.dart';
+import 'custom_ui.dart';
 import 'advanced.dart';
 import 'labels.dart';
 import 'choice_widgets.dart';
@@ -22,10 +23,9 @@ class AdvancedScreen extends StatelessWidget {
       ('IPTV and multicast', 'IPTV, IGMP snooping, group transfer', MediaScreen(api: api, onSessionExpired: onSessionExpired)),
     ];
     return Scaffold(
-      appBar: AppBar(title: const Text('Advanced router settings')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
+            body: DetailScroll(
+  title: 'Advanced router settings',
+  children: [
           const GlassCard(
             child: Text(
               'Every change here uses a real stock endpoint from the web panel, and is reloaded after saving. Nothing here is a local only setting, except where a card says so.',
@@ -275,10 +275,9 @@ class _NetworkScreenState extends State<NetworkScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Network')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
+            body: DetailScroll(
+  title: 'Network',
+  children: [
           advError(_error),
           if (_loading) skeletonCard(),
           advSection('Static DNS'),
@@ -291,9 +290,9 @@ class _NetworkScreenState extends State<NetworkScreen> {
                   spacing: 6,
                   runSpacing: 6,
                   children: [
-                    FilterChip(label: const Text('Cloudflare'), selected: false, onSelected: (_) => setState(() { _dns1.text = '1.1.1.1'; _dns2.text = '1.0.0.1'; })),
-                    FilterChip(label: const Text('Google'), selected: false, onSelected: (_) => setState(() { _dns1.text = '8.8.8.8'; _dns2.text = '8.8.4.4'; })),
-                    FilterChip(label: const Text('Quad9'), selected: false, onSelected: (_) => setState(() { _dns1.text = '9.9.9.9'; _dns2.text = '149.112.112.112'; })),
+                    CustomChoiceChip(label: 'Cloudflare', selected: false, onTap: () => setState(() { _dns1.text = '1.1.1.1'; _dns2.text = '1.0.0.1'; })),
+                    CustomChoiceChip(label: 'Google', selected: false, onTap: () => setState(() { _dns1.text = '8.8.8.8'; _dns2.text = '8.8.4.4'; })),
+                    CustomChoiceChip(label: 'Quad9', selected: false, onTap: () => setState(() { _dns1.text = '9.9.9.9'; _dns2.text = '149.112.112.112'; })),
                   ],
                 ),
                 const SizedBox(height: 10),
@@ -348,9 +347,9 @@ class _NetworkScreenState extends State<NetworkScreen> {
                 Wrap(
                   spacing: 6,
                   children: [
-                    FilterChip(label: const Text('Auto (1500)'), selected: _mtu.text == '1500', onSelected: (_) => setState(() => _mtu.text = '1500')),
-                    FilterChip(label: const Text('1492 (PPPoE)'), selected: _mtu.text == '1492', onSelected: (_) => setState(() => _mtu.text = '1492')),
-                    FilterChip(label: const Text('1400'), selected: _mtu.text == '1400', onSelected: (_) => setState(() => _mtu.text = '1400')),
+                    CustomChoiceChip(label: 'Auto (1500)', selected: _mtu.text == '1500', onTap: () => setState(() => _mtu.text = '1500')),
+                    CustomChoiceChip(label: '1492 (PPPoE)', selected: _mtu.text == '1492', onTap: () => setState(() => _mtu.text = '1492')),
+                    CustomChoiceChip(label: '1400', selected: _mtu.text == '1400', onTap: () => setState(() => _mtu.text = '1400')),
                   ],
                 ),
                 advField(_mtu, 'MTU (usual default 1500)', keyboardType: TextInputType.number),
@@ -611,10 +610,9 @@ class _Ipv6ScreenState extends State<Ipv6Screen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('IPv6')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
+            body: DetailScroll(
+  title: 'IPv6',
+  children: [
           advError(_error),
           if (_loading) skeletonCard(),
           advSection('Current IPv6'),
@@ -954,10 +952,9 @@ class _SystemScreenState extends State<SystemScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('System')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
+            body: DetailScroll(
+  title: 'System',
+  children: [
           advError(_error),
           if (_loading) skeletonCard(),
           advSection('Firmware, read only'),
@@ -1230,10 +1227,9 @@ class _FilterScreenState extends State<FilterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('MAC filter')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
+            body: DetailScroll(
+  title: 'MAC filter',
+  children: [
           advError(_error),
           SegmentedControl<String>(
             options: const [('deny', 'Blacklist'), ('allow', 'Whitelist')],
@@ -1425,10 +1421,9 @@ class _MediaScreenState extends State<MediaScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('IPTV and multicast')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
+            body: DetailScroll(
+  title: 'IPTV and multicast',
+  children: [
           advError(_error),
           if (_loading) skeletonCard(),
           advSection('IPTV'),
@@ -1442,14 +1437,14 @@ class _MediaScreenState extends State<MediaScreen> {
                   spacing: 6,
                   children: [
                     for (final port in {..._ethPortOptions, ..._ethPortsSel}.toList()..sort())
-                      FilterChip(
-                        label: Text('LAN $port'),
+                      CustomChoiceChip(
+                        label: 'LAN $port',
                         selected: _ethPortsSel.contains(port),
-                        onSelected: (v) => setState(() {
-                          if (v) {
-                            if (!_ethPortsSel.contains(port)) _ethPortsSel.add(port);
-                          } else {
+                        onTap: () => setState(() {
+                          if (_ethPortsSel.contains(port)) {
                             _ethPortsSel.remove(port);
+                          } else {
+                            _ethPortsSel.add(port);
                           }
                         }),
                       ),
@@ -1484,14 +1479,14 @@ class _MediaScreenState extends State<MediaScreen> {
                   spacing: 6,
                   children: [
                     for (var b = 1; b <= 4; b++)
-                      FilterChip(
-                        label: Text('BSSID $b'),
+                      CustomChoiceChip(
+                        label: 'BSSID $b',
                         selected: _group1.contains(b),
-                        onSelected: (v) => setState(() {
-                          if (v) {
-                            if (!_group1.contains(b)) _group1.add(b);
-                          } else {
+                        onTap: () => setState(() {
+                          if (_group1.contains(b)) {
                             _group1.remove(b);
+                          } else {
+                            _group1.add(b);
                           }
                         }),
                       ),
@@ -1503,14 +1498,14 @@ class _MediaScreenState extends State<MediaScreen> {
                   spacing: 6,
                   children: [
                     for (var b = 1; b <= 4; b++)
-                      FilterChip(
-                        label: Text('BSSID $b'),
+                      CustomChoiceChip(
+                        label: 'BSSID $b',
                         selected: _group2.contains(b),
-                        onSelected: (v) => setState(() {
-                          if (v) {
-                            if (!_group2.contains(b)) _group2.add(b);
-                          } else {
+                        onTap: () => setState(() {
+                          if (_group2.contains(b)) {
                             _group2.remove(b);
+                          } else {
+                            _group2.add(b);
                           }
                         }),
                       ),

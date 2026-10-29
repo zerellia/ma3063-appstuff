@@ -122,8 +122,11 @@ class LocalStore {
 
   static Future<void> saveHomeCache(Map<String, dynamic> snapshot) async {
     final p = await SharedPreferences.getInstance();
-    await p.setString(_cacheKey, jsonEncode(snapshot));
-    await p.setInt(_cacheTimeKey, DateTime.now().millisecondsSinceEpoch);
+    // Batched: both writes are issued together in one await.
+    await Future.wait([
+      p.setString(_cacheKey, jsonEncode(snapshot)),
+      p.setInt(_cacheTimeKey, DateTime.now().millisecondsSinceEpoch),
+    ]);
   }
 
   static Future<(Map<String, dynamic>?, int?)> homeCache() async {

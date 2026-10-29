@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'custom_ui.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api.dart';
 import 'theme.dart';
 import 'local_store.dart';
+import 'advanced.dart';
 import 'advanced2.dart';
 import 'local_screen.dart';
 import 'labels.dart';
@@ -401,23 +404,25 @@ class _QrScanScreenState extends State<QrScanScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Scan router QR'),
-        actions: [
-          IconButton(
-            icon: Icon(_torchOn ? Icons.flash_on : Icons.flash_off),
-            onPressed: () async {
-              try {
-                await _controller.toggleTorch();
-                if (mounted) setState(() => _torchOn = !_torchOn);
-              } catch (_) {}
-            },
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          Expanded(
+      body: SafeArea(
+        top: true,
+        child: Column(
+          children: [
+            DetailTopBar(
+              title: 'Scan router QR',
+              actions: [
+                IconButton(
+                  icon: Icon(_torchOn ? Icons.flash_on : Icons.flash_off),
+                  onPressed: () async {
+                    try {
+                      await _controller.toggleTorch();
+                      if (mounted) setState(() => _torchOn = !_torchOn);
+                    } catch (_) {}
+                  },
+                ),
+              ],
+            ),
+            Expanded(
             child: MobileScanner(
               controller: _controller,
               onDetect: _onDetect,
@@ -451,7 +456,8 @@ class _QrScanScreenState extends State<QrScanScreen> {
               child: const Text('Cancel'),
             ),
           ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -488,8 +494,11 @@ class _MainShellState extends State<MainShell> {
       SettingsScreen(api: widget.api, routerIp: widget.routerIp, onSessionExpired: _sessionExpired),
     ];
     return Scaffold(
-      appBar: AppBar(title: const Text('MA3063 Control')),
-      body: IndexedStack(index: _index, children: screens),
+      body: SafeArea(
+        top: true,
+        bottom: false,
+        child: IndexedStack(index: _index, children: screens),
+      ),
       bottomNavigationBar: Container(
         decoration: const BoxDecoration(
           color: Color(0xFFEAF1F8),
@@ -499,7 +508,10 @@ class _MainShellState extends State<MainShell> {
           backgroundColor: const Color(0xFFEAF1F8),
           indicatorColor: const Color(0xFFDCE9FD),
           selectedIndex: _index,
-          onDestinationSelected: (i) => setState(() => _index = i),
+          onDestinationSelected: (i) {
+            HapticFeedback.selectionClick();
+            setState(() => _index = i);
+          },
           destinations: const [
             NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Home'),
             NavigationDestination(icon: Icon(Icons.devices_outlined), selectedIcon: Icon(Icons.devices), label: 'Devices'),
@@ -776,8 +788,10 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return RefreshIndicator(
+      color: reyeeBlue,
+      backgroundColor: Colors.white,
       onRefresh: _load,
-      child: ListView(
+      child: CustomScrollList(
         padding: const EdgeInsets.all(16),
         children: [
           errorBanner(_error),
@@ -792,14 +806,8 @@ class _HomeScreenState extends State<HomeScreen> {
           if (_loading)
             skeletonCard()
           else
-            Container(
-              margin: const EdgeInsets.only(bottom: 12),
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(colors: [reyeeBlue, reyeeCyan], begin: Alignment.topLeft, end: Alignment.bottomRight),
-                borderRadius: BorderRadius.all(Radius.circular(28)),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(20),
+            RepaintBoundary(
+              child: HeroCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -824,7 +832,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ],
                     ),
                     const SizedBox(height: 16),
-                    Text(_clientCount, style: const TextStyle(fontSize: 40, fontWeight: FontWeight.w700, color: Colors.white, fontFeatures: [FontFeature.tabularFigures()])),
+                    CountUp(value: int.tryParse(_clientCount) ?? 0, style: const TextStyle(fontSize: 40, fontWeight: FontWeight.w700, color: Colors.white, fontFeatures: [FontFeature.tabularFigures()])),
                     const Text('devices online', style: TextStyle(color: Colors.white70)),
                     const SizedBox(height: 12),
                     Text('WAN $_wanIp · $_wanProto', style: const TextStyle(color: Colors.white)),
@@ -869,8 +877,9 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
           sectionTitle('CPU trend, sampled while the app is open'),
-          reyeeCard(child: Sparkline(values: _cpuSamples)),
+          RepaintBoundary(child: reyeeCard(child: Sparkline(values: _cpuSamples))),
           sectionTitle('Topology'),
+          RepaintBoundary(child: TopologyMap(names: _topoNames())),
           if (_topoChildren.isEmpty)
             reyeeCard(child: Text(_loading ? 'Loading...' : 'No mesh child nodes. This router is the only node.'))
           else
@@ -943,6 +952,24 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
     );
+  }
+
+  List<String> _topoNames() {
+    final names = <String>[_hostname];
+    void add(dynamic node) {
+      if (node is Map) {
+        names.add(str(node['hostName'] ?? node['hostname'] ?? node['name'] ?? node['mac'], 'Mesh node'));
+        final c = node['childList'];
+        if (c is List) {
+          for (final k in c) add(k);
+        }
+        if (c is Map) {
+          for (final k in c.values) add(k);
+        }
+      }
+    }
+    for (final child in _topoChildren) add(child);
+    return names.take(8).toList();
   }
 
   Widget _topoRow(dynamic node, int level) {
@@ -1103,20 +1130,18 @@ class _DevicesScreenState extends State<DevicesScreen> {
       showMsg(context, 'This device has no router index, so its limit cannot be changed from here.');
       return;
     }
-    var up = TextEditingController(text: _toMbps(c['usbandwidth']));
-    var down = TextEditingController(text: _toMbps(c['dsbandwidth']));
+    var upKbps = (numOrNull(c['usbandwidth']) ?? 0).round();
+    var downKbps = (numOrNull(c['dsbandwidth']) ?? 0).round();
     try {
       final res = await widget.api.post('/api/v1/lua/OnlineUsers/getStaItem', {'idx': idx});
       final item = dataOf(res);
       final m = item is Map ? (item['staItem'] ?? item) : null;
       if (m is Map) {
-        if (m['usbandwidth'] != null) up.text = _toMbps(m['usbandwidth']);
-        if (m['dsbandwidth'] != null) down.text = _toMbps(m['dsbandwidth']);
+        if (m['usbandwidth'] != null) upKbps = (numOrNull(m['usbandwidth']) ?? 0).round();
+        if (m['dsbandwidth'] != null) downKbps = (numOrNull(m['dsbandwidth']) ?? 0).round();
       }
     } catch (_) {}
     if (!mounted) return;
-    var upMbps = int.tryParse(up.text) ?? 0;
-    var downMbps = int.tryParse(down.text) ?? 0;
     final save = await showDialog<bool>(
       context: context,
       builder: (ctx) => StatefulBuilder(
@@ -1128,10 +1153,10 @@ class _DevicesScreenState extends State<DevicesScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text('Upload', style: TextStyle(fontWeight: FontWeight.w600)),
-                LimitSlider(mbps: upMbps, onChanged: (v) => setD(() => upMbps = v)),
+                LimitEditor(kbps: upKbps, onChanged: (v) => setD(() => upKbps = v)),
                 const SizedBox(height: 16),
                 const Text('Download', style: TextStyle(fontWeight: FontWeight.w600)),
-                LimitSlider(mbps: downMbps, onChanged: (v) => setD(() => downMbps = v)),
+                LimitEditor(kbps: downKbps, onChanged: (v) => setD(() => downKbps = v)),
               ],
             ),
           ),
@@ -1143,8 +1168,6 @@ class _DevicesScreenState extends State<DevicesScreen> {
       ),
     );
     if (save != true) return;
-    final upKbps = upMbps * 1000;
-    final downKbps = downMbps * 1000;
     try {
       await widget.api.post('/api/v1/lua/OnlineUsers/setStaItem', {'idx': idx, 'usbandwidth': upKbps, 'dsbandwidth': downKbps});
       await _load();
@@ -1153,17 +1176,7 @@ class _DevicesScreenState extends State<DevicesScreen> {
       widget.onSessionExpired();
     } catch (e) {
       showMsg(context, e is ApiException ? e.message : 'Failed to save limit.');
-    } finally {
-      up.dispose();
-      down.dispose();
     }
-  }
-
-  String _toMbps(dynamic kbps) {
-    final n = numOrNull(kbps);
-    if (n == null) return '0';
-    final v = n / 1000;
-    return v == v.roundToDouble() ? '${v.round()}' : v.toStringAsFixed(2);
   }
 
   @override
@@ -1176,22 +1189,40 @@ class _DevicesScreenState extends State<DevicesScreen> {
           (c['ip'] ?? '').toString().toLowerCase().contains(q);
     }).toList();
     return RefreshIndicator(
+      color: reyeeBlue,
+      backgroundColor: Colors.white,
       onRefresh: _load,
-      child: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          errorBanner(_error),
-          TextField(
-            decoration: const InputDecoration(prefixIcon: Icon(Icons.search), hintText: 'Search name, MAC or IP'),
-            onChanged: (v) => setState(() => _query = v),
+      child: CustomScrollView(
+        slivers: [
+          SliverPadding(
+            padding: const EdgeInsets.all(16),
+            sliver: SliverList(
+              delegate: SliverChildListDelegate([
+                errorBanner(_error),
+                TabHeader(title: 'Devices', subtitle: '${_clients.length} devices seen', icon: Icons.devices_outlined),
+                TextField(
+                  decoration: const InputDecoration(prefixIcon: Icon(Icons.search), hintText: 'Search name, MAC or IP'),
+                  onChanged: (v) => setState(() => _query = v),
+                ),
+                const SizedBox(height: 12),
+                if (_loading)
+                  const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator()))
+                else if (shown.isEmpty)
+                  reyeeCard(child: const Text('No online devices found.')),
+              ]),
+            ),
           ),
-          const SizedBox(height: 12),
-          if (_loading)
-            const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator()))
-          else if (shown.isEmpty)
-            reyeeCard(child: const Text('No online devices found.'))
-          else
-            for (final c in shown) _deviceCard(c),
+          if (!_loading && shown.isNotEmpty)
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              sliver: SliverList.builder(
+                itemCount: shown.length,
+                itemBuilder: (context, i) => KeyedSubtree(
+                  key: ValueKey(shown[i]['mac'] ?? i),
+                  child: _deviceCard(shown[i]),
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -1391,12 +1422,46 @@ class _WifiScreenState extends State<WifiScreen> {
                           children: [
                             const Text('Standard', style: TextStyle(fontWeight: FontWeight.w700, color: reyeeMuted)),
                             for (final e in [Encryption.open, Encryption.wpa2, Encryption.wpa2Wpa3, Encryption.wpa3])
-                              RadioListTile<String>(value: e.code, groupValue: enc, title: Text(e.label), onChanged: (v) => Navigator.pop(dc, v)),
+                              Material(
+                                color: e.code == enc ? appSecondaryContainer : Colors.transparent,
+                                child: InkWell(
+                                  onTap: () {
+                                    uiHaptic();
+                                    Navigator.pop(dc, e.code);
+                                  },
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+                                    child: Row(
+                                      children: [
+                                        Expanded(child: Text(e.label, style: const TextStyle(fontWeight: FontWeight.w600))),
+                                        if (e.code == enc) const Icon(Icons.check, color: reyeeBlue),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
                             const SizedBox(height: 8),
                             const Text('Legacy', style: TextStyle(fontWeight: FontWeight.w700, color: reyeeMuted)),
                             const Text('Older devices only, less secure.', style: TextStyle(color: reyeeMuted, fontSize: 12)),
                             for (final e in [Encryption.wpa, Encryption.wpaWpa2])
-                              RadioListTile<String>(value: e.code, groupValue: enc, title: Text(e.label), onChanged: (v) => Navigator.pop(dc, v)),
+                              Material(
+                                color: e.code == enc ? appSecondaryContainer : Colors.transparent,
+                                child: InkWell(
+                                  onTap: () {
+                                    uiHaptic();
+                                    Navigator.pop(dc, e.code);
+                                  },
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+                                    child: Row(
+                                      children: [
+                                        Expanded(child: Text(e.label, style: const TextStyle(fontWeight: FontWeight.w600))),
+                                        if (e.code == enc) const Icon(Icons.check, color: reyeeBlue),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
                           ],
                         ),
                       ),
@@ -1497,11 +1562,14 @@ class _WifiScreenState extends State<WifiScreen> {
   @override
   Widget build(BuildContext context) {
     return RefreshIndicator(
+      color: reyeeBlue,
+      backgroundColor: Colors.white,
       onRefresh: _load,
-      child: ListView(
+      child: CustomScrollList(
         padding: const EdgeInsets.all(16),
         children: [
           errorBanner(_error),
+          TabHeader(title: 'WiFi networks', subtitle: '${_ssids.length} networks', icon: Icons.wifi_outlined),
           if (_loading)
             const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator()))
           else if (_ssids.isEmpty)
@@ -1673,10 +1741,11 @@ class _ToolsScreenState extends State<ToolsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
+    return CustomScrollList(
       padding: const EdgeInsets.all(16),
       children: [
         errorBanner(_error),
+        const TabHeader(title: 'Tools', subtitle: 'Network check and diagnostics', icon: Icons.health_and_safety_outlined),
         sectionTitle('Network self check'),
         reyeeCard(
           child: Column(
@@ -1755,11 +1824,60 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String _connector = 'Not installed';
   List<Map<String, dynamic>> _ports = [];
   List<Map<String, dynamic>> _logs = [];
+  String _search = '';
+  List<String> _recent = [];
 
   @override
   void initState() {
     super.initState();
     _load();
+    _loadRecent();
+  }
+
+  Future<void> _loadRecent() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) setState(() => _recent = prefs.getStringList('recent_features') ?? []);
+  }
+
+  Future<void> _recordRecent(String key) async {
+    final prefs = await SharedPreferences.getInstance();
+    final next = [key, ..._recent.where((k) => k != key)].take(3).toList();
+    await prefs.setStringList('recent_features', next);
+    if (mounted) setState(() => _recent = next);
+  }
+
+  bool _matches(String text) {
+    final q = _search.trim().toLowerCase();
+    if (q.isEmpty) return true;
+    return text.toLowerCase().contains(q);
+  }
+
+  bool _sectionVisible(String keywords) {
+    final q = _search.trim().toLowerCase();
+    if (q.isEmpty) return true;
+    return keywords.contains(q);
+  }
+
+  List<(String, String, String, IconData, Widget)> _features() {
+    final api = widget.api;
+    final onExp = widget.onSessionExpired;
+    return [
+      ('behavior', 'Behavior', 'Parental control rules, max 32', Icons.family_restroom_outlined, BehaviorScreen(api: api, onSessionExpired: onExp)),
+      ('radio', 'Radio', 'Channel, bandwidth, power', Icons.signal_cellular_alt_outlined, RadioScreen(api: api, onSessionExpired: onExp)),
+      ('mesh', 'Mesh', 'Topology, roaming, EasyMesh', Icons.hub_outlined, MeshScreen(api: api, onSessionExpired: onExp)),
+      ('network', 'Network', 'Static DNS, DMZ, UPnP, WPS, WAN', Icons.lan_outlined, NetworkScreen(api: api, onSessionExpired: onExp)),
+      ('ipv6', 'IPv6', 'Mode and manual WAN and LAN', Icons.public_outlined, Ipv6Screen(api: api, onSessionExpired: onExp)),
+      ('system', 'System', 'Hostname, time, scheduled reboot, session, language, LED schedule, firmware', Icons.tune_outlined, SystemScreen(api: api, onSessionExpired: onExp)),
+      ('macfilter', 'MAC filter', 'Allow or block devices by MAC address', Icons.filter_alt_outlined, FilterScreen(api: api, onSessionExpired: onExp)),
+      ('iptv', 'IPTV and multicast', 'IPTV ports, IGMP, VLAN', Icons.tv_outlined, MediaScreen(api: api, onSessionExpired: onExp)),
+      ('local', 'Local insights', 'Charts, device history, phone speed test, local alerts, weekly report, offline cache', Icons.insights_outlined, LocalScreen(api: api, onSessionExpired: onExp)),
+    ];
+  }
+
+  Future<void> _openFeature((String, String, String, IconData, Widget) f) async {
+    await _recordRecent(f.$1);
+    if (!mounted) return;
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => f.$5));
   }
 
   Future<void> _load() async {
@@ -2014,32 +2132,60 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     return RefreshIndicator(
+      color: reyeeBlue,
+      backgroundColor: Colors.white,
       onRefresh: _load,
-      child: ListView(
+      child: CustomScrollList(
         padding: const EdgeInsets.all(16),
         children: [
           errorBanner(_error),
-          sectionTitle('More'),
-          reyeeCard(
-            child: Column(
-              children: [
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Advanced router settings', style: TextStyle(fontWeight: FontWeight.w700)),
-                  subtitle: const Text('Parental control, radio, mesh, network, IPv6, system, MAC filter, IPTV', style: TextStyle(color: reyeeMuted)),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => AdvancedScreen(api: widget.api, onSessionExpired: widget.onSessionExpired))),
-                ),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Local insights', style: TextStyle(fontWeight: FontWeight.w700)),
-                  subtitle: const Text('Charts, device history, phone speed test, local alerts, weekly report, offline cache', style: TextStyle(color: reyeeMuted)),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => LocalScreen(api: widget.api, onSessionExpired: widget.onSessionExpired))),
-                ),
-              ],
-            ),
+          TabHeader(title: 'Settings', subtitle: 'Router ${widget.routerIp}', icon: Icons.settings_outlined),
+          TextField(
+            decoration: const InputDecoration(prefixIcon: Icon(Icons.search), hintText: 'Search features and settings'),
+            onChanged: (v) => setState(() => _search = v),
           ),
+          const SizedBox(height: 12),
+          if (_recent.isNotEmpty) ...[
+            sectionTitle('Recently used'),
+            for (final f in _features().where((f) => _recent.contains(f.$1)))
+              reyeeCard(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                child: ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(f.$4, color: reyeeBlue),
+                  title: Text(f.$2, style: const TextStyle(fontWeight: FontWeight.w700)),
+                  subtitle: Text(f.$3, style: const TextStyle(color: reyeeMuted, fontSize: 12)),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => _openFeature(f),
+                ),
+              ),
+          ],
+          sectionTitle('Router features'),
+          for (final f in _features().where((f) => _matches('${f.$2} ${f.$3}')))
+            reyeeCard(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(f.$4, color: reyeeBlue),
+                title: Text(f.$2, style: const TextStyle(fontWeight: FontWeight.w700)),
+                subtitle: Text(f.$3, style: const TextStyle(color: reyeeMuted, fontSize: 12)),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => _openFeature(f),
+              ),
+            ),
+          if (_search.isEmpty || _matches('advanced router settings hub'))
+            reyeeCard(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.apps_outlined, color: reyeeBlue),
+                title: const Text('All advanced settings', style: TextStyle(fontWeight: FontWeight.w700)),
+                subtitle: const Text('Old hub, all groups in one list', style: TextStyle(color: reyeeMuted, fontSize: 12)),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => AdvancedScreen(api: widget.api, onSessionExpired: widget.onSessionExpired))),
+              ),
+            ),
+          if (_sectionVisible('network wan lan mesh dns ipv6 connect disconnect')) ...[
           sectionTitle('Network'),
           reyeeCard(
             child: Column(
@@ -2060,6 +2206,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ],
             ),
           ),
+          ],
+          if (_sectionVisible('port forwarding rule add')) ...[
           sectionTitle('Port forwarding'),
           if (_ports.isEmpty)
             reyeeCard(child: Text(_loading ? 'Loading...' : 'No port forwarding rules.'))
@@ -2075,6 +2223,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
           FilledButton.icon(onPressed: _addPort, icon: const Icon(Icons.add), label: const Text('Add rule')),
+          ],
+          if (_sectionVisible('router led restart reboot password admin')) ...[
           sectionTitle('Router'),
           reyeeCard(
             child: Column(
@@ -2093,6 +2243,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ],
             ),
           ),
+          ],
+          if (_sectionVisible('recent logs log')) ...[
           sectionTitle('Recent logs'),
           if (_logs.isEmpty)
             reyeeCard(child: Text(_loading ? 'Loading...' : 'No logs returned.'))
@@ -2102,6 +2254,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 child: Text(() { final t = (l['msg'] ?? l['content'])?.toString(); return (t != null && t.isNotEmpty) ? t : 'Log entry'; }(), style: const TextStyle(fontSize: 12, height: 1.4)),
               ),
+          ],
+          if (_sectionVisible('session router ip connector log out logout')) ...[
           sectionTitle('Session'),
           reyeeCard(
             child: Column(
@@ -2113,6 +2267,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ],
             ),
           ),
+          ],
           const SizedBox(height: 16),
         ],
       ),

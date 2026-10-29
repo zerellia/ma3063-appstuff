@@ -1,5 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'custom_ui.dart';
 import 'labels.dart';
+import 'limit_math.dart';
 import 'theme.dart';
 
 /// Shared choice controls. Closed sets are never free text here:
@@ -12,68 +15,8 @@ Future<T?> showChoiceSheet<T>(
   required List<(T, String, String?)> options,
   required T current,
   bool searchable = false,
-}) async {
-  var query = '';
-  return showModalBottomSheet<T>(
-    context: context,
-    isScrollControlled: true,
-    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
-    builder: (ctx) => StatefulBuilder(
-      builder: (ctx, setS) {
-        final shown = query.isEmpty
-            ? options
-            : options.where((o) => o.$2.toLowerCase().contains(query.toLowerCase())).toList();
-        return SafeArea(
-          child: Padding(
-            padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const SizedBox(height: 12),
-                Container(width: 36, height: 5, decoration: BoxDecoration(color: appBorder, borderRadius: BorderRadius.circular(999))),
-                const SizedBox(height: 12),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Align(alignment: Alignment.centerLeft, child: Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: appInk))),
-                ),
-                if (searchable) ...[
-                  const SizedBox(height: 12),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: TextField(
-                      decoration: const InputDecoration(prefixIcon: Icon(Icons.search), hintText: 'Search'),
-                      onChanged: (v) => setS(() => query = v),
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 8),
-                Flexible(
-                  child: ListView(
-                    shrinkWrap: true,
-                    children: [
-                      for (final o in options)
-                        if (shown.contains(o))
-                          RadioListTile<T>(
-                            value: o.$1,
-                            groupValue: current,
-                            title: Text(o.$2, style: const TextStyle(fontWeight: FontWeight.w600, color: appInk)),
-                            subtitle: o.$3 == null ? null : Text(o.$3!, style: const TextStyle(color: appMuted)),
-                            activeColor: appBlue,
-                            onChanged: (v) => Navigator.pop(ctx, v),
-                          ),
-                      if (shown.isEmpty)
-                        const Padding(padding: EdgeInsets.all(20), child: Text('Nothing matches that search.', style: TextStyle(color: appMuted))),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 12),
-              ],
-            ),
-          ),
-        );
-      },
-    ),
-  );
+}) {
+  return showCustomChoiceSheet<T>(context, title: title, options: options, current: current, searchable: searchable);
 }
 
 Widget choiceRow(String title, String value, String? subtitle, VoidCallback onTap) {
@@ -129,13 +72,10 @@ class WeekdayChips extends StatelessWidget {
           runSpacing: 6,
           children: [
             for (final d in Weekday.values)
-              FilterChip(
-                label: Text(d.short),
+              CustomChoiceChip(
+                label: d.short,
                 selected: selected.contains(d.code),
-                selectedColor: appSecondaryContainer,
-                checkmarkColor: appOnSecondary,
-                labelStyle: TextStyle(fontWeight: FontWeight.w600, color: selected.contains(d.code) ? appOnSecondary : appInk),
-                onSelected: (_) => toggle(d.code),
+                onTap: () => toggle(d.code),
               ),
           ],
         ),
@@ -183,49 +123,188 @@ class TimePickerRow extends StatelessWidget {
   }
 }
 
-class LimitSlider extends StatelessWidget {
-  const LimitSlider({super.key, required this.mbps, required this.onChanged});
-  final int mbps;
+class LimitEditor extends StatefulWidget {
+  const LimitEditor({super.key, required this.kbps, required this.onChanged});
+  final int kbps;
   final ValueChanged<int> onChanged;
   static const steps = [0, 5, 10, 20, 50, 100, 200, 500];
-  static int closestStep(int v) {
-    var best = steps.first;
-    for (final s in steps) {
-      if ((s - v).abs() < (best - v).abs()) best = s;
+  static int closestStep(int kbps) => closestPresetMbps(kbps);
+  @override
+  State<LimitEditor> createState() => _LimitEditorState();
+}
+
+class _LimitEditorState extends State<LimitEditor> {
+  late final TextEditingController _text;
+  LimitUnit _unit = LimitUnit.mbps;
+  Timer? _debounce;
+  String? _error;
+  int _lastKbps = -1;
+
+  @override
+  void initState() {
+    super.initState();
+    _lastKbps = widget.kbps;
+    _text = TextEditingController(text: _textFor(widget.kbps));
+  }
+
+  String _textFor(int kbps) {
+    if (kbps <= 0) return '';
+    final v = valueFromKbps(kbps, _unit);
+    return _format(v);
+  }
+
+  String _format(double v) {
+    if (v == v.roundToDouble()) return '${v.round()}';
+    return v.toStringAsFixed(2).replaceAll(RegExp(r'0+$'), '').replaceAll(RegExp(r'\.$'), '');
+  }
+
+  @override
+  void didUpdateWidget(covariant LimitEditor old) {
+    super.didUpdateWidget(old);
+    if (widget.kbps != _lastKbps) {
+      _lastKbps = widget.kbps;
+      if (!_text.text.isEmpty || widget.kbps > 0) {
+        final parsed = double.tryParse(_text.text.trim());
+        final parsedKbps = parsed == null ? -1 : kbpsFromValue(parsed, _unit);
+        if (parsedKbps != widget.kbps) _text.text = _textFor(widget.kbps);
+      }
     }
-    return best;
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _text.dispose();
+    super.dispose();
+  }
+
+  void _applyText() {
+    final raw = _text.text.trim();
+    final err = limitError(raw);
+    if (err != null) {
+      setState(() => _error = err);
+      return;
+    }
+    if (raw.isEmpty) {
+      setState(() => _error = null);
+      if (widget.kbps != 0) {
+        _lastKbps = 0;
+        widget.onChanged(0);
+      }
+      return;
+    }
+    final kbps = kbpsFromValue(double.parse(raw), _unit);
+    setState(() => _error = null);
+    if (kbps != widget.kbps) {
+      _lastKbps = kbps;
+      widget.onChanged(kbps);
+    }
+  }
+
+  void _onTextChanged(String _) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 300), _applyText);
+  }
+
+  void _step(int delta) {
+    final current = double.tryParse(_text.text.trim()) ?? valueFromKbps(widget.kbps, _unit);
+    final next = current + delta;
+    if (next < 0) {
+      setState(() => _error = 'Negative is not a valid limit. Use No limit for unlimited.');
+      return;
+    }
+    _text.text = _format(next);
+    _applyText();
+  }
+
+  void _setPreset(int mbps) {
+    setState(() => _unit = LimitUnit.mbps);
+    _text.text = mbps == 0 ? '' : '$mbps';
+    _applyText();
   }
 
   @override
   Widget build(BuildContext context) {
-    final current = closestStep(mbps);
-    final idx = steps.indexOf(current);
+    final sliderSteps = LimitEditor.steps;
+    final sliderIdx = sliderSteps.indexOf(closestPresetMbps(widget.kbps));
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(current == 0 ? 'No limit' : '$current Mbps', style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: appInk, fontFeatures: [FontFeature.tabularFigures()])),
-        Slider(
-          value: idx.toDouble(),
+        Text(limitSummary(widget.kbps), style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: appInk, fontFeatures: [FontFeature.tabularFigures()])),
+        const SizedBox(height: 4),
+        const Text('Slider shows the closest preset as a hint only. The typed value is what is used.', style: TextStyle(color: appMuted, fontSize: 12, height: 1.4)),
+        CustomSlider(
+          value: sliderIdx.toDouble(),
           min: 0,
-          max: (steps.length - 1).toDouble(),
-          divisions: steps.length - 1,
-          label: current == 0 ? 'No limit' : '$current Mbps',
-          onChanged: (v) => onChanged(steps[v.round()]),
+          max: (sliderSteps.length - 1).toDouble(),
+          divisions: sliderSteps.length - 1,
+          onChanged: (v) => _setPreset(sliderSteps[v.round()]),
         ),
         Wrap(
           spacing: 6,
           runSpacing: 6,
           children: [
-            for (final s in [0, 5, 10, 20, 50, 100])
-              FilterChip(
-                label: Text(s == 0 ? 'No limit' : '$s Mbps'),
-                selected: current == s,
-                selectedColor: appSecondaryContainer,
-                labelStyle: TextStyle(fontWeight: FontWeight.w600, color: current == s ? appOnSecondary : appInk),
-                onSelected: (_) => onChanged(s),
+            for (final p in sliderSteps)
+              CustomChoiceChip(
+                label: p == 0 ? 'No limit' : '$p Mbps',
+                selected: closestPresetMbps(widget.kbps) == p && _unit == LimitUnit.mbps,
+                onTap: () => _setPreset(p),
               ),
           ],
         ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _text,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+                decoration: InputDecoration(
+                  labelText: 'Manual limit',
+                  hintText: 'Leave empty for No limit',
+                  errorText: _error,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                ),
+                onChanged: _onTextChanged,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Material(
+              color: Colors.white,
+              shape: const CircleBorder(side: BorderSide(color: appOutlineVariant)),
+              child: InkWell(
+                customBorder: const CircleBorder(),
+                onTap: () => _step(-1),
+                child: const Padding(padding: EdgeInsets.all(12), child: Icon(Icons.remove, size: 20, color: appInk)),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Material(
+              color: appBlue,
+              shape: const CircleBorder(),
+              child: InkWell(
+                customBorder: const CircleBorder(),
+                onTap: () => _step(1),
+                child: const Padding(padding: EdgeInsets.all(12), child: Icon(Icons.add, size: 20, color: Colors.white)),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        SegmentedControl<LimitUnit>(
+          options: const [(LimitUnit.mbps, 'Mbps'), (LimitUnit.kbps, 'KBps'), (LimitUnit.mbpsByte, 'MBps')],
+          value: _unit,
+          onChanged: (u) {
+            setState(() {
+              _unit = u;
+              if (widget.kbps > 0) _text.text = _format(valueFromKbps(widget.kbps, u));
+            });
+          },
+        ),
+        if (limitAboveRouterHint(widget.kbps)) ...[
+          const SizedBox(height: 8),
+          const Text('Above 1000 Mbps: the router may cap this. It is not clamped here.', style: TextStyle(color: Color(0xFFB45309), fontSize: 12, height: 1.4)),
+        ],
       ],
     );
   }
@@ -244,12 +323,11 @@ class RoamingSlider extends StatelessWidget {
       children: [
         Text(label, style: const TextStyle(fontWeight: FontWeight.w600, color: appInk)),
         Text('Roam when weaker than $v dBm', style: const TextStyle(color: appMuted, fontSize: 12)),
-        Slider(
+        CustomSlider(
           value: v.toDouble(),
           min: -90,
           max: -40,
           divisions: 10,
-          label: '$v dBm',
           onChanged: (x) => onChanged(x.round()),
         ),
         const Row(

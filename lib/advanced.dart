@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'api.dart';
 import 'theme.dart';
+import 'custom_ui.dart';
 import 'labels.dart';
 import 'choice_widgets.dart';
 
@@ -226,12 +227,11 @@ class _BehaviorScreenState extends State<BehaviorScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Parental control')),
-      body: RefreshIndicator(
+            body: RefreshIndicator(
         onRefresh: _load,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
+        child: DetailScroll(
+  title: 'Parental control',
+  children: [
             advError(_error),
             GlassCard(
               child: Text(
@@ -412,10 +412,9 @@ class _RadioScreenState extends State<RadioScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Radio')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
+            body: DetailScroll(
+  title: 'Radio',
+  children: [
           advError(_error),
           if (_loading)
             skeletonCard()
@@ -674,10 +673,9 @@ class _MeshScreenState extends State<MeshScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Mesh')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
+            body: DetailScroll(
+  title: 'Mesh',
+  children: [
           advError(_error),
           advSection('Topology'),
           if (_loading)
