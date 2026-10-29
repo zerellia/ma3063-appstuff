@@ -1893,7 +1893,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return [
       ('behavior', 'Behavior', 'Parental control rules, max 32', Icons.family_restroom_outlined, BehaviorScreen(api: api, onSessionExpired: onExp)),
       ('radio', 'Radio', 'Channel, bandwidth, power', Icons.signal_cellular_alt_outlined, RadioScreen(api: api, onSessionExpired: onExp)),
-      ('mesh', 'Mesh', 'Topology, roaming, EasyMesh', Icons.hub_outlined, MeshScreen(api: api, onSessionExpired: onExp)),
+      ('mesh', 'Mesh', 'Roaming, EasyMesh', Icons.hub_outlined, MeshScreen(api: api, onSessionExpired: onExp)),
       ('topology', 'Topology', 'Router, devices, bands', Icons.account_tree_outlined, TopologyScreen(api: api, onSessionExpired: onExp)),
       ('network', 'Network', 'Static DNS, DMZ, UPnP, WPS, WAN', Icons.lan_outlined, NetworkScreen(api: api, onSessionExpired: onExp)),
       ('ipv6', 'IPv6', 'Mode and manual WAN and LAN', Icons.public_outlined, Ipv6Screen(api: api, onSessionExpired: onExp)),

@@ -15,7 +15,7 @@ class AdvancedScreen extends StatelessWidget {
     final items = <(String, String, Widget)>[
       ('Parental control', 'Behavior rules, max 32', BehaviorScreen(api: api, onSessionExpired: onSessionExpired)),
       ('Radio', 'Channel, bandwidth, power', RadioScreen(api: api, onSessionExpired: onSessionExpired)),
-      ('Mesh', 'Topology, roaming, EasyMesh', MeshScreen(api: api, onSessionExpired: onSessionExpired)),
+      ('Mesh', 'Roaming, EasyMesh', MeshScreen(api: api, onSessionExpired: onSessionExpired)),
       ('Network', 'Static DNS, DMZ, UPnP, WPS, WAN', NetworkScreen(api: api, onSessionExpired: onSessionExpired)),
       ('IPv6', 'Mode and manual WAN and LAN', Ipv6Screen(api: api, onSessionExpired: onSessionExpired)),
       ('System', 'Hostname, time, scheduled reboot, session, language, acceleration, LED schedule, firmware version', SystemScreen(api: api, onSessionExpired: onSessionExpired)),

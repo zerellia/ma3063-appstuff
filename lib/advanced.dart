@@ -645,7 +645,7 @@ class _MeshScreenState extends State<MeshScreen> {
         final ok = dataOf(s) == 1 || dataOf(s) == '1';
         if (mounted) setState(() => _pairResult = ok ? 'Mesh node count increased.' : 'Mesh node count did not increase. Check the new device and try again.');
       } catch (_) {
-        if (mounted) setState(() => _pairResult = 'Pairing result is uncertain. Reload the topology to check the node count.');
+        if (mounted) setState(() => _pairResult = 'Pairing result is uncertain. Reload to check the node count.');
       }
       await _load();
     } on SessionExpiredException {
@@ -677,7 +677,7 @@ class _MeshScreenState extends State<MeshScreen> {
   loading: _loading,
   children: [
           advError(_error),
-          advSection('Topology'),
+          advSection('Mesh nodes'),
           if (_loading)
             skeletonCard()
           else
@@ -699,7 +699,7 @@ class _MeshScreenState extends State<MeshScreen> {
                           children: [
                             Text(str(_mainData['hostName'] ?? _mainData['hostname'], 'Main router'), style: const TextStyle(fontWeight: FontWeight.w700)),
                             Text('Mode: ${MeshMode.fromCode(_mode).label}', style: const TextStyle(color: appMuted, fontSize: 12)),
-                            Text('${meshNodeCount(_children.isEmpty ? {} : _children)} node(s) total. Lines are connections from the topology data only, no signal values are shown because the router does not report mesh signal strength.', style: const TextStyle(color: appMuted, fontSize: 12, height: 1.45)),
+                            Text('${meshNodeCount(_children.isEmpty ? {} : _children)} node(s) total. No signal values are shown because the router does not report mesh signal strength.', style: const TextStyle(color: appMuted, fontSize: 12, height: 1.45)),
                           ],
                         ),
                       ),

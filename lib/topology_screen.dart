@@ -127,6 +127,11 @@ class _TopologyScreenState extends State<TopologyScreen> {
     final bandCounts = countByBand(_clients);
     final total = _clients.length;
     final bandOrder = ['5 GHz', '2.4 GHz', 'Unknown band'];
+    final bandColors = {
+      '5 GHz': appBlue,
+      '2.4 GHz': const Color(0xFF60A5FA),
+      'Unknown band': appMuted,
+    };
     return Scaffold(
       body: DetailScroll(
         title: 'Topology',
@@ -177,8 +182,21 @@ class _TopologyScreenState extends State<TopologyScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('$total clients', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, fontFeatures: [FontFeature.tabularFigures()])),
-                const Text('Total online clients', style: TextStyle(color: appMuted, fontSize: 12)),
+                Row(
+                  children: [
+                    RepaintBoundary(child: _Donut(counts: bandCounts, order: bandOrder, colors: bandColors)),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('$total clients', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, fontFeatures: [FontFeature.tabularFigures()])),
+                          const Text('Total online clients', style: TextStyle(color: appMuted, fontSize: 12)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 16),
                 if (bandCounts.isEmpty)
                   const Text('No band info returned for these clients.', style: TextStyle(color: appMuted))
@@ -189,6 +207,8 @@ class _TopologyScreenState extends State<TopologyScreen> {
                         padding: const EdgeInsets.only(bottom: 8),
                         child: Row(
                           children: [
+                            Container(width: 10, height: 10, decoration: BoxDecoration(color: bandColors[label], shape: BoxShape.circle)),
+                            const SizedBox(width: 8),
                             Expanded(child: Text(label, style: const TextStyle(fontWeight: FontWeight.w600))),
                             Text('${bandCounts[label]} clients', style: const TextStyle(fontWeight: FontWeight.w700, fontFeatures: [FontFeature.tabularFigures()])),
                           ],
@@ -326,4 +346,60 @@ class _StarLinesPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _StarLinesPainter old) => old.router != router || old.targets.length != targets.length;
+}
+
+/// Donut for the by-band card: one slice per band, no standard data.
+/// 5 GHz is appBlue, 2.4 GHz is a lighter blue, unknown band is muted.
+class _Donut extends StatelessWidget {
+  const _Donut({required this.counts, required this.order, required this.colors});
+  final Map<String, int> counts;
+  final List<String> order;
+  final Map<String, Color> colors;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 96,
+      height: 96,
+      child: CustomPaint(painter: _DonutPainter(counts: counts, order: order, colors: colors)),
+    );
+  }
+}
+
+class _DonutPainter extends CustomPainter {
+  _DonutPainter({required this.counts, required this.order, required this.colors});
+  final Map<String, int> counts;
+  final List<String> order;
+  final Map<String, Color> colors;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2 - 7;
+    final total = counts.values.fold<int>(0, (a, b) => a + b);
+    if (total == 0) {
+      final paint = Paint()
+        ..color = appMuted
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 14;
+      canvas.drawCircle(center, radius, paint);
+      return;
+    }
+    var start = -90.0 * 3.141592653589793 / 180.0;
+    for (final label in order) {
+      final count = counts[label] ?? 0;
+      if (count == 0) continue;
+      final sweep = count / total * 2 * 3.141592653589793;
+      final paint = Paint()
+        ..color = colors[label] ?? appMuted
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 14
+        ..strokeCap = StrokeCap.butt;
+      canvas.drawArc(Rect.fromCircle(center: center, radius: radius), start, sweep, false, paint);
+      start += sweep;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DonutPainter old) => old.counts != counts;
 }
